@@ -1,0 +1,26 @@
+[
+  {
+    "id": "exemplo-01",
+    "titulo": "Sessão 01 · Eixo SAE 1045 (referência)",
+    "arquivo": "exemplo-01.json",
+    "duracaoS": 360
+  },
+  {
+    "id": "exemplo-02",
+    "titulo": "Sessão 02 · Eixo SAE 1045 (lote 2)",
+    "arquivo": "exemplo-02.json",
+    "duracaoS": 600
+  },
+  {
+    "id": "exemplo-03",
+    "titulo": "Sessão 03 · Buchas de latão",
+    "arquivo": "exemplo-03.json",
+    "duracaoS": 660
+  },
+  {
+    "id": "exemplo-04",
+    "titulo": "Sessão 04 · Eixo longo SAE 1020",
+    "arquivo": "exemplo-04.json",
+    "duracaoS": 600
+  }
+]

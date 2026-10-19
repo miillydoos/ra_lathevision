@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Laboratório do Torno</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%230a5fa8'/%3E%3Cpath d='M4 15h16M6 9h5v6H6zM14 11h5v4h-5z' stroke='white' stroke-width='1.6' fill='none'/%3E%3C/svg%3E" />
+    <meta name="description" content="Laboratório de Monitoramento e Diagnóstico — torno ROMI T 350 em 3D e XR" />
+  </head>
+  <body>
+    <canvas id="cena" aria-label="Torno ROMI T 350 em 3D"></canvas>
+
+    <div id="hud">
+      <header class="topo painel">
+        <div class="marca">
+          <strong><span class="titulo-longo">Laboratório de Monitoramento e Diagnóstico</span><span class="titulo-curto">Laboratório do Torno</span></strong>
+          <span class="subtitulo">Torno universal ROMI T 350 · modelo de referência</span>
+        </div>
+        <nav class="modos" id="modos" aria-label="Modo de operação"></nav>
+        <div class="acoes">
+          <span class="conexao" id="conexao" hidden></span>
+          <button class="botao" id="btn-sensores" aria-pressed="false" aria-label="Sensores: abrir painel elétrico e tampa lateral" title="Abrir o painel elétrico e a tampa da caixa de engrenagens e mostrar os sensores"><span class="texto-longo">Sensores</span></button>
+          <button class="botao" id="btn-tour" aria-pressed="false" title="Apresentação 360° do laboratório">360°</button>
+          <button class="botao" id="btn-vr" hidden aria-label="Entrar em RV"><span class="texto-longo">Entrar em </span>RV</button>
+          <button class="botao" id="btn-ar" hidden aria-label="Entrar em RA"><span class="texto-longo">Entrar em </span>RA</button>
+          <button class="botao icone" id="btn-config" hidden title="Configurações" aria-label="Configurações"></button>
+        </div>
+      </header>
+
+      <aside class="lateral esquerda" id="lateral-esquerda">
+        <section class="painel" id="painel-componentes">
+          <h2>Componentes</h2>
+          <p class="sutil">Clique no modelo ou na lista para identificar.</p>
+          <ul class="lista-componentes" id="lista-componentes"></ul>
+        </section>
+      </aside>
+
+      <aside class="lateral direita" id="lateral-direita"></aside>
+
+      <footer class="rodape" id="rodape"></footer>
+
+      <section class="painel cartao-info" id="cartao-info" hidden></section>
+      <div class="dica" id="dica" hidden></div>
+    </div>
+
+    <div id="carregando" role="status" aria-live="polite">
+      <div class="caixa-carregando">
+        <strong>Carregando o torno…</strong>
+        <div class="barra"><div class="preenchimento" id="progresso"></div></div>
+        <span id="progresso-texto">0%</span>
+      </div>
+    </div>
+
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>

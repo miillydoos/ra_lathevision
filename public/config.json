@@ -1,0 +1,52 @@
+{
+  "_aviso": "Limites de EXEMPLO para fins didáticos. Ajuste conforme a máquina, o ponto medido e a condição de operação.",
+  "maquina": "Torno ROMI T 350 — Laboratório de Usinagem",
+  "leituraVelhaS": 10,
+  "janelaGraficoS": 120,
+  "mqtt": {
+    "url": "ws://localhost:9001",
+    "topicoBase": "senai/torno01",
+    "usuario": "",
+    "senha": ""
+  },
+  "grandezas": {
+    "temperatura": {
+      "sentido": "acima",
+      "atencao": 50,
+      "alarme": 60,
+      "escala": [15, 80],
+      "observacao": "Temperatura da carcaça do cabeçote junto ao rolamento dianteiro."
+    },
+    "oleo": {
+      "sensor": "continuo",
+      "sentido": "abaixo",
+      "atencao": 40,
+      "alarme": 25,
+      "escala": [0, 100],
+      "observacao": "Use \"sensor\": \"boia\" para chave de nível: a leitura 1 indica nível OK e 0 indica nível baixo."
+    },
+    "corrente": {
+      "sentido": "acima",
+      "atencao": 18,
+      "alarme": 22,
+      "escala": [0, 30],
+      "nominal": 20,
+      "persistenciaS": 2,
+      "observacao": "Motor de 7,5 cv em 220 V trifásico (corrente nominal aproximada de 20 A). Confirme na placa do motor e na tensão da rede. A persistência de 2 s evita que o pico de partida dispare o alarme."
+    },
+    "vibracao": {
+      "sentido": "acima",
+      "atencao": 2.8,
+      "alarme": 4.5,
+      "escala": [0, 8],
+      "observacao": "Velocidade RMS em mm/s. Faixas inspiradas na ISO 20816; valide com o histórico desta máquina."
+    },
+    "rotacao": {
+      "sentido": "acima",
+      "atencao": 2000,
+      "alarme": null,
+      "escala": [0, 2100],
+      "observacao": "T 350: 39 a 2.000 rpm. Valores acima indicam leitura incoerente."
+    }
+  }
+}
