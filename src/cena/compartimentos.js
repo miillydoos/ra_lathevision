@@ -34,6 +34,10 @@ export const COMPARTIMENTOS = [
       { grandeza: "vibracao", tipo: "acelerometro", pos: [-0.055, 1.215], etiqueta: [-0.1, 0.08] },
       { grandeza: "rotacao", tipo: "indutivo", pos: [-0.2, 1.03], etiqueta: [0.02, -0.12] },
       { grandeza: "oleo", tipo: "nivel", pos: [0.215, 0.8], etiqueta: [-0.04, 0.1] },
+      // encoder rotativo acoplado na ponta do eixo-árvore (centro do ressalto)
+      { grandeza: "rotacao", tipo: "encoder", nome: "Encoder (rotação)", pos: [0, 1.132], etiqueta: [0.02, -0.105] },
+      // HC-SR04 diante da borda inferior da polia; sem grandeza própria: ainda sem leitura
+      { tipo: "ultrassonico", nome: "Sensor ultrassônico", icone: "onda", unidade: "mm", pos: [-0.18, 1.082], etiqueta: [-0.14, 0.0] },
     ],
   },
   {
@@ -108,6 +112,7 @@ export function criarCompartimentos({ scene, camera, selecao, tampas, fluxo, con
       aoAbrirGrandeza?.(id);
     };
     for (const s of interior.sensores) {
+      if (!s.id) continue; // sensor sem medição: não abre painel
       for (const m of s.malhas) selecao.registrarClicavel(m, abrirMedicao(s.id), selecao.porId(c.componente));
     }
     // k = quanto está aberta (0 fechada, 1 aberta); alvo = para onde vai quando ninguém está segurando
@@ -203,6 +208,7 @@ export function criarCompartimentos({ scene, camera, selecao, tampas, fluxo, con
   // ---------- estado das medições nos sensores (LED e etiqueta)
   function atualizarSensores() {
     for (const s of sensores) {
+      if (!s.id) continue;
       const e = fluxo.estado(s.id);
       const tv = textoValor(config, s.id, e.valor);
       s.atualizar(ESTADOS[e.estado] ?? ESTADOS.semDados, tv);
@@ -295,7 +301,9 @@ function cor(scene, hex, especular = 0.25) {
 
 /** Corpo do sensor (geometria simples), LED de estado e etiqueta flutuante com valor. */
 function criarSensor(scene, raiz, c, s) {
-  const g = GRANDEZA_POR_ID[s.grandeza];
+  // sensor sem grandeza (ultrassônico): só aparência e etiqueta, sempre "Sem dados"
+  const g = GRANDEZA_POR_ID[s.grandeza] ?? { id: s.tipo, nome: s.nome, icone: s.icone };
+  const nome = `${g.id}_${s.tipo}`;
   const [z, y] = s.pos;
   const x = c.face;
   const metal = cor(scene, "#b8bec6", 0.6);
@@ -366,24 +374,62 @@ function criarSensor(scene, raiz, c, s) {
     saida.rotation.x = Math.PI / 2;
     saida.position.set(x - 0.016, y, z - 0.105);
     ponta = new Vector3(x - 0.026, y + 0.012, z - 0.034);
+  } else if (s.tipo === "encoder") {
+    // encoder de eixo (tipo E40S): acoplamento na ponta do eixo-árvore (x = -1,378), flange de alumínio
+    // e corpo preto voltados para fora, cabo saindo pela lateral
+    saindo("sensorEncoder", 0.014, 0.008, escuro, 20, 0.043);
+    saindo("sensorEncoder", 0.04, 0.006, cor(scene, "#d4d8dd", 0.7), 32, 0.051);
+    const corpo = saindo("sensorEncoder", 0.04, 0.022, cor(scene, "#1c1f23", 0.35), 32, 0.057);
+    const plaqueta = peca(MeshBuilder.CreateBox("sensorEncoder", { width: 0.016, height: 0.002, depth: 0.026 }, scene), cor(scene, "#eceff2", 0.2));
+    plaqueta.position.set(corpo.position.x, y + 0.0198, z);
+    const prensaCabo = peca(MeshBuilder.CreateCylinder("sensorEncoder", { diameter: 0.009, height: 0.008 }, scene), escuro);
+    prensaCabo.position.set(corpo.position.x, y - 0.022, z);
+    const fio = peca(MeshBuilder.CreateCylinder("caboEncoder", { diameter: 0.005, height: 0.09 }, scene), cabo);
+    fio.position.set(corpo.position.x, y - 0.07, z);
+    ponta = new Vector3(x - 0.08, y, z);
+  } else if (s.tipo === "ultrassonico") {
+    // HC-SR04: placa azul de frente para fora, com os dois transdutores e os quatro pinos embaixo,
+    // presa por uma cantoneira à face do ressalto, à esquerda da polia
+    const xp = x - 0.057;
+    const placa = peca(MeshBuilder.CreateBox("sensorUltrassom", { width: 0.0016, height: 0.02, depth: 0.045 }, scene), cor(scene, "#1f5fae", 0.3));
+    placa.position.set(xp, y, z);
+    for (const lado of [-1, 1]) {
+      const transdutor = peca(MeshBuilder.CreateCylinder("sensorUltrassom", { diameter: 0.016, height: 0.012, tessellation: 28 }, scene), metal);
+      transdutor.rotation.z = Math.PI / 2;
+      transdutor.position.set(xp - 0.0068, y, z + lado * 0.0135);
+      const tela = peca(MeshBuilder.CreateCylinder("sensorUltrassom", { diameter: 0.013, height: 0.001, tessellation: 28 }, scene), escuro);
+      tela.rotation.z = Math.PI / 2;
+      tela.position.set(xp - 0.0133, y, z + lado * 0.0135);
+    }
+    const cristal = peca(MeshBuilder.CreateBox("sensorUltrassom", { width: 0.003, height: 0.004, depth: 0.01 }, scene), metal);
+    cristal.position.set(xp - 0.0023, y + 0.0065, z);
+    const conector = peca(MeshBuilder.CreateBox("sensorUltrassom", { width: 0.003, height: 0.003, depth: 0.011 }, scene), escuro);
+    conector.position.set(xp - 0.0023, y - 0.0085, z);
+    for (let i = 0; i < 4; i++) {
+      const pino = peca(MeshBuilder.CreateBox("sensorUltrassom", { width: 0.0007, height: 0.009, depth: 0.0007 }, scene), cor(scene, "#c9ccd1", 0.8));
+      pino.position.set(xp - 0.0023, y - 0.0145, z - 0.0038 + i * 0.00254);
+    }
+    const cantoneira = peca(MeshBuilder.CreateBox("sensorUltrassom", { width: 0.057, height: 0.012, depth: 0.004 }, scene), escuro);
+    cantoneira.position.set(x - 0.0285, y, z - 0.0245);
+    ponta = new Vector3(xp - 0.004, y + 0.0065, z);
   }
 
   // LED de estado
-  const matLed = new StandardMaterial(`ledSensor_${g.id}`, scene);
+  const matLed = new StandardMaterial(`ledSensor_${nome}`, scene);
   matLed.disableLighting = true;
-  const led = peca(MeshBuilder.CreateSphere(`ledSensor_${g.id}`, { diameter: 0.009, segments: 8 }, scene), matLed);
+  const led = peca(MeshBuilder.CreateSphere(`ledSensor_${nome}`, { diameter: 0.009, segments: 8 }, scene), matLed);
   led.position.copyFrom(ponta);
 
   // etiqueta (como os rótulos dos pontos instrumentados: sempre de frente para a câmera e por cima)
-  const etiqueta = MeshBuilder.CreatePlane(`etiquetaSensor_${g.id}`, { width: LARGURA_ETIQUETA, height: ALTURA_ETIQUETA }, scene);
+  const etiqueta = MeshBuilder.CreatePlane(`etiquetaSensor_${nome}`, { width: LARGURA_ETIQUETA, height: ALTURA_ETIQUETA }, scene);
   etiqueta.parent = raiz;
   const [dz, dy] = s.etiqueta ?? [0, 0.07];
   etiqueta.position.set(x - 0.09, y + dy, z + dz);
   etiqueta.billboardMode = Mesh.BILLBOARDMODE_ALL;
   etiqueta.renderingGroupId = 1;
-  const tex = new DynamicTexture(`texEtiquetaSensor_${g.id}`, { width: 320, height: 120 }, scene, true);
+  const tex = new DynamicTexture(`texEtiquetaSensor_${nome}`, { width: 320, height: 120 }, scene, true);
   tex.hasAlpha = true;
-  const matEtiqueta = new StandardMaterial(`matEtiquetaSensor_${g.id}`, scene);
+  const matEtiqueta = new StandardMaterial(`matEtiquetaSensor_${nome}`, scene);
   matEtiqueta.diffuseTexture = tex;
   matEtiqueta.emissiveTexture = tex;
   matEtiqueta.useAlphaFromDiffuseTexture = true;
@@ -394,30 +440,30 @@ function criarSensor(scene, raiz, c, s) {
 
   // linha de chamada: da borda da etiqueta voltada para o sensor até o LED
   const borda = etiqueta.position.add(new Vector3(0, ((dy >= 0 ? -1 : 1) * ALTURA_ETIQUETA) / 2, 0));
-  const linha = MeshBuilder.CreateLines(`linhaSensor_${g.id}`, { points: [borda, ponta] }, scene);
+  const linha = MeshBuilder.CreateLines(`linhaSensor_${nome}`, { points: [borda, ponta] }, scene);
   linha.color = new Color3(0.85, 0.9, 0.95);
   linha.isPickable = false;
   linha.parent = raiz;
 
   let anterior = "";
   const sensor = {
-    id: g.id,
+    id: s.grandeza ? g.id : null,
     malhas,
     atualizar(estado, tv) {
       const chave = `${estado.id}|${tv.valor}|${tv.unidade}`;
       if (chave === anterior) return;
       anterior = chave;
       matLed.emissiveColor = Color3.FromHexString(estado.cor);
-      desenharEtiqueta(tex.getContext(), g, estado, tv);
+      desenharEtiqueta(tex.getContext(), g, estado, tv, s.nome);
       tex.update();
     },
   };
   // desenha já na criação: textura nunca atualizada deixa a cena "não pronta" (whenReadyAsync não termina)
-  sensor.atualizar(ESTADOS.semDados, { valor: "—", unidade: "" });
+  sensor.atualizar(ESTADOS.semDados, { valor: "—", unidade: s.unidade ?? "" });
   return sensor;
 }
 
-function desenharEtiqueta(ctx, g, estado, tv) {
+function desenharEtiqueta(ctx, g, estado, tv, nome = `Sensor de ${g.nome.toLowerCase()}`) {
   const W = 320;
   const H = 120;
   ctx.clearRect(0, 0, W, H);
@@ -433,7 +479,7 @@ function desenharEtiqueta(ctx, g, estado, tv) {
   ctx.font = "600 24px Segoe UI, Roboto, Arial, sans-serif";
   ctx.textAlign = "left";
   ctx.textBaseline = "middle";
-  ctx.fillText(`Sensor de ${g.nome.toLowerCase()}`, 56, 28);
+  ctx.fillText(nome, 56, 28);
   ctx.textBaseline = "alphabetic";
   ctx.font = "700 44px Segoe UI, Roboto, Arial, sans-serif";
   ctx.fillStyle = estado.id === "semDados" ? "#8f99a3" : "#ffffff";
