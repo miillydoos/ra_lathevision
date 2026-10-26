@@ -176,4 +176,5 @@ digital calibrado.
 - Projetos 3 (inspeção guiada com checklist) e 5 (comparador de condições de usinagem) reaproveitando sessões e painéis.
 #   r a _ l a t h e v i s i o n  
  #   t o r n o _ s i t e  
+ #   t o r n o _ s i t e  
  
