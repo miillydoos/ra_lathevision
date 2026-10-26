@@ -174,3 +174,5 @@ digital calibrado.
 - Movimentos didáticos dos carros, contraponto e proteções, identificados como simulados quando não houver sensor de posição.
 - Análise de frequência da vibração, se a aquisição permitir.
 - Projetos 3 (inspeção guiada com checklist) e 5 (comparador de condições de usinagem) reaproveitando sessões e painéis.
+#   r a _ l a t h e v i s i o n  
+ 
