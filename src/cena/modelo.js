@@ -1,4 +1,4 @@
-import { Color3, ImportMeshAsync, Vector3 } from "@babylonjs/core";
+import { ImportMeshAsync, Vector3 } from "@babylonjs/core";
 import "@babylonjs/loaders/glTF";
 
 /**
@@ -10,20 +10,6 @@ export async function carregarModelo(scene, { url, aoProgresso }) {
   const resultado = await ImportMeshAsync(url, scene, {
     onProgress: (e) => aoProgresso?.(e.lengthComputable ? e.loaded / e.total : null),
   });
-
-  // Deixa o corpo do torno vermelho, preservando componentes escuros e metálicos.
-  const materiaisVistos = new Set();
-  for (const malha of resultado.meshes) {
-    const material = malha.material;
-    if (!material || materiaisVistos.has(material)) continue;
-    materiaisVistos.add(material);
-    const cor = material.albedoColor ?? material.diffuseColor;
-    if (cor && (cor.r + cor.g + cor.b) / 3 > 0.28) {
-      const vermelho = new Color3(0.78, 0.035, 0.045);
-      if (material.albedoColor) material.albedoColor = vermelho;
-      if (material.diffuseColor) material.diffuseColor = vermelho;
-    }
-  }
 
   const raiz = resultado.meshes[0];
   const malhas = resultado.meshes.filter((m) => m !== raiz && m.getTotalVertices() > 0);
