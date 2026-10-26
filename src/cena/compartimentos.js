@@ -36,8 +36,9 @@ export const COMPARTIMENTOS = [
       { grandeza: "oleo", tipo: "nivel", pos: [0.215, 0.8], etiqueta: [-0.04, 0.1] },
       // encoder rotativo acoplado na ponta do eixo-árvore (centro do ressalto)
       { grandeza: "rotacao", tipo: "encoder", nome: "Encoder (rotação)", pos: [0, 1.132], etiqueta: [0.02, -0.105] },
-      // HC-SR04 diante da borda inferior da polia; sem grandeza própria: ainda sem leitura
-      { tipo: "ultrassonico", nome: "Sensor ultrassônico", icone: "onda", unidade: "mm", pos: [-0.18, 1.082], etiqueta: [-0.14, 0.0] },
+      // HC-SR04 sob a borda inferior da polia, com os transdutores voltados para baixo (entre a polia e o
+      // encoder, fora do alcance do sensor indutivo); sem grandeza própria: ainda sem leitura
+      { tipo: "ultrassonico", nome: "Sensor ultrassônico", icone: "onda", unidade: "mm", pos: [-0.14, 1.082], etiqueta: [-0.1, 0.075] },
     ],
   },
   {
@@ -50,7 +51,8 @@ export const COMPARTIMENTOS = [
     giro: -Math.PI / 2,
     face: -0.385, // z do mundo, à frente da régua de bornes
     vista: { alvo: [-1.07, 0.96, -0.46], alfa: -Math.PI / 2 + 0.35, beta: 1.33, raio: 1.75 },
-    sensores: [{ grandeza: "corrente", tipo: "tc", pos: [1.178, 0.825], etiqueta: [0, 0.075] }],
+    // sensor de corrente não invasivo (núcleo dividido, tipo SCT-013) abraçando uma fase da alimentação do motor
+    sensores: [{ grandeza: "corrente", tipo: "tc", nome: "Corrente (SCT-013)", pos: [1.178, 0.825], etiqueta: [0, 0.075] }],
   },
 ];
 const LARGURA_ETIQUETA = 0.15; // m
@@ -363,16 +365,35 @@ function criarSensor(scene, raiz, c, s) {
     boia.position.set(x - 0.022, y - 0.04, z);
     ponta = new Vector3(x - 0.04, y + 0.06, z);
   } else if (s.tipo === "tc") {
-    // transformador de corrente em volta do cabo de alimentação do motor
-    const fio = peca(MeshBuilder.CreateCylinder("caboMotor", { diameter: 0.012, height: 0.32 }, scene), cabo);
-    fio.position.set(x - 0.016, y + 0.04, z);
-    const anel = peca(MeshBuilder.CreateTorus("sensorCorrente", { diameter: 0.042, thickness: 0.016, tessellation: 28 }, scene), escuro);
-    anel.position.set(x - 0.016, y, z);
-    const caixa = peca(MeshBuilder.CreateBox("sensorCorrente", { width: 0.018, height: 0.03, depth: 0.026 }, scene), escuro);
-    caixa.position.set(x - 0.016, y, z - 0.034);
-    const saida = peca(MeshBuilder.CreateCylinder("caboTC", { diameter: 0.005, height: 0.12 }, scene), cor(scene, "#f2f2f2", 0.1));
+    // sensor não invasivo de núcleo dividido (SCT-013) fechado em volta de uma das três fases que alimentam
+    // o motor (preta, cinza e marrom): não há contato elétrico, ele só abraça o cabo
+    const xc = x - 0.016;
+    ["#16191d", "#7d838a", "#6b4426"].forEach((hex, i) => {
+      const fase = peca(MeshBuilder.CreateCylinder("caboMotor", { diameter: 0.012, height: 0.32 }, scene), cor(scene, hex, 0.1));
+      fase.position.set(xc, y + 0.04, z + i * 0.024);
+    });
+    const corpo = cor(scene, "#24364d", 0.3);
+    const anel = peca(MeshBuilder.CreateTorus("sensorCorrente", { diameter: 0.042, thickness: 0.016, tessellation: 28 }, scene), corpo);
+    anel.position.set(xc, y, z);
+    // linha de abertura do núcleo (o lado que destrava e abre para encaixar no cabo)
+    const fenda = peca(MeshBuilder.CreateBox("sensorCorrente", { width: 0.019, height: 0.017, depth: 0.0012 }, scene), cor(scene, "#0c0f13", 0.1));
+    fenda.position.set(xc, y, z + 0.021);
+    const trava = peca(MeshBuilder.CreateBox("sensorCorrente", { width: 0.012, height: 0.006, depth: 0.007 }, scene), escuro);
+    trava.position.set(xc, y - 0.0095, z + 0.021);
+    const caixa = peca(MeshBuilder.CreateBox("sensorCorrente", { width: 0.018, height: 0.03, depth: 0.026 }, scene), corpo);
+    caixa.position.set(xc, y, z - 0.034);
+    const rotulo = peca(MeshBuilder.CreateBox("sensorCorrente", { width: 0.0012, height: 0.018, depth: 0.018 }, scene), cor(scene, "#eceff2", 0.2));
+    rotulo.position.set(xc - 0.0095, y, z - 0.034);
+    // cabo de saída com plugue P2 (3,5 mm) até o ESP32
+    const saida = peca(MeshBuilder.CreateCylinder("caboTC", { diameter: 0.004, height: 0.1 }, scene), cabo);
     saida.rotation.x = Math.PI / 2;
-    saida.position.set(x - 0.016, y, z - 0.105);
+    saida.position.set(xc, y, z - 0.097);
+    const plugue = peca(MeshBuilder.CreateCylinder("caboTC", { diameter: 0.007, height: 0.018 }, scene), escuro);
+    plugue.rotation.x = Math.PI / 2;
+    plugue.position.set(xc, y, z - 0.156);
+    const pinoP2 = peca(MeshBuilder.CreateCylinder("caboTC", { diameter: 0.0035, height: 0.012 }, scene), metal);
+    pinoP2.rotation.x = Math.PI / 2;
+    pinoP2.position.set(xc, y, z - 0.171);
     ponta = new Vector3(x - 0.026, y + 0.012, z - 0.034);
   } else if (s.tipo === "encoder") {
     // encoder de eixo (tipo E40S): acoplamento na ponta do eixo-árvore (x = -1,378), flange de alumínio
@@ -388,30 +409,28 @@ function criarSensor(scene, raiz, c, s) {
     fio.position.set(corpo.position.x, y - 0.07, z);
     ponta = new Vector3(x - 0.08, y, z);
   } else if (s.tipo === "ultrassonico") {
-    // HC-SR04: placa azul de frente para fora, com os dois transdutores e os quatro pinos embaixo,
-    // presa por uma cantoneira à face do ressalto, à esquerda da polia
-    const xp = x - 0.057;
-    const placa = peca(MeshBuilder.CreateBox("sensorUltrassom", { width: 0.0016, height: 0.02, depth: 0.045 }, scene), cor(scene, "#1f5fae", 0.3));
+    // HC-SR04 deitado: placa azul na horizontal com os dois transdutores apontando para baixo e os quatro
+    // pinos saindo pela borda de fora, presa por uma cantoneira à face do ressalto
+    const xp = x - 0.035; // centro da placa (20 mm de largura em X)
+    const placa = peca(MeshBuilder.CreateBox("sensorUltrassom", { width: 0.02, height: 0.0016, depth: 0.045 }, scene), cor(scene, "#1f5fae", 0.3));
     placa.position.set(xp, y, z);
     for (const lado of [-1, 1]) {
       const transdutor = peca(MeshBuilder.CreateCylinder("sensorUltrassom", { diameter: 0.016, height: 0.012, tessellation: 28 }, scene), metal);
-      transdutor.rotation.z = Math.PI / 2;
-      transdutor.position.set(xp - 0.0068, y, z + lado * 0.0135);
+      transdutor.position.set(xp, y - 0.0068, z + lado * 0.0135);
       const tela = peca(MeshBuilder.CreateCylinder("sensorUltrassom", { diameter: 0.013, height: 0.001, tessellation: 28 }, scene), escuro);
-      tela.rotation.z = Math.PI / 2;
-      tela.position.set(xp - 0.0133, y, z + lado * 0.0135);
+      tela.position.set(xp, y - 0.0133, z + lado * 0.0135);
     }
-    const cristal = peca(MeshBuilder.CreateBox("sensorUltrassom", { width: 0.003, height: 0.004, depth: 0.01 }, scene), metal);
-    cristal.position.set(xp - 0.0023, y + 0.0065, z);
+    const cristal = peca(MeshBuilder.CreateBox("sensorUltrassom", { width: 0.004, height: 0.003, depth: 0.01 }, scene), metal);
+    cristal.position.set(xp + 0.0065, y + 0.0023, z);
     const conector = peca(MeshBuilder.CreateBox("sensorUltrassom", { width: 0.003, height: 0.003, depth: 0.011 }, scene), escuro);
-    conector.position.set(xp - 0.0023, y - 0.0085, z);
+    conector.position.set(xp - 0.0085, y + 0.0023, z);
     for (let i = 0; i < 4; i++) {
-      const pino = peca(MeshBuilder.CreateBox("sensorUltrassom", { width: 0.0007, height: 0.009, depth: 0.0007 }, scene), cor(scene, "#c9ccd1", 0.8));
-      pino.position.set(xp - 0.0023, y - 0.0145, z - 0.0038 + i * 0.00254);
+      const pino = peca(MeshBuilder.CreateBox("sensorUltrassom", { width: 0.009, height: 0.0007, depth: 0.0007 }, scene), cor(scene, "#c9ccd1", 0.8));
+      pino.position.set(xp - 0.0145, y + 0.0023, z - 0.0038 + i * 0.00254);
     }
-    const cantoneira = peca(MeshBuilder.CreateBox("sensorUltrassom", { width: 0.057, height: 0.012, depth: 0.004 }, scene), escuro);
-    cantoneira.position.set(x - 0.0285, y, z - 0.0245);
-    ponta = new Vector3(xp - 0.004, y + 0.0065, z);
+    const cantoneira = peca(MeshBuilder.CreateBox("sensorUltrassom", { width: 0.035, height: 0.012, depth: 0.004 }, scene), escuro);
+    cantoneira.position.set(x - 0.0175, y + 0.005, z - 0.0245);
+    ponta = new Vector3(xp, y + 0.006, z);
   }
 
   // LED de estado

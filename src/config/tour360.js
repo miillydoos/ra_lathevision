@@ -148,7 +148,7 @@ export const PARADAS_360 = [
     pino: [-1.0, 0.3, 0.44],
     camera: { alvo: [-0.6, 0.45, 0.1], alfa: FRENTE + 0.45, beta: 1.2, raio: 3.2 },
     descricao:
-      "O motor principal fica no pedestal do lado do cabeçote e transmite o movimento por correias e polias multi-V. O sensor de corrente fica no painel elétrico, na alimentação do motor. A bandeja recolhe cavacos e fluido de corte.",
+      "O motor principal fica no pedestal do lado do cabeçote e transmite o movimento por correias e polias multi-V. O sensor de corrente não invasivo (núcleo dividido, tipo SCT-013) fica no painel elétrico, abraçando uma fase da alimentação do motor. A bandeja recolhe cavacos e fluido de corte.",
     fatos: [
       ["Motor", "AC assíncrono, 7,5 cv"],
       ["Freio", "Eletromagnético"],
