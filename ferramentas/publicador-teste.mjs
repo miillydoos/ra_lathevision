@@ -1,7 +1,8 @@
 // Publicador de teste: faz o papel do ESP32 usando o mesmo modelo da simulação.
-//   npm run publicador -- --url mqtt://broker.hivemq.com:1883 --base tormax30/senai/torno01 --cenario vibracao
+//   npm run publicador -- --url mqtt://public.cloud.shiftr.io:1883 --usuario public --senha public --base tormax30/senai/torno01 --cenario vibracao
 // Opções:
 //   --url       broker (padrão mqtt://localhost:1883)
+//   --usuario   e --senha, se o broker exigir (shiftr.io público: public / public)
 //   --base      tópico base (padrão tormax30/senai/torno01)
 //   --cenario   normal | aquecimento | oleoBaixo | vibracao (padrão normal)
 //   --apos      segundos até aplicar o cenário (padrão 30)
@@ -22,6 +23,8 @@ const cenario = iniciarCenario(args.cenario ?? "normal", { inicio: Number(args.a
 
 const cliente = mqtt.connect(url, {
   clientId: `publicador-teste-${process.pid}`,
+  username: args.usuario,
+  password: args.senha,
   will: { topic: `${base}/status`, payload: "offline", retain: true, qos: 1 },
 });
 

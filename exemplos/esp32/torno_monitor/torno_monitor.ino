@@ -19,10 +19,12 @@
 // ---------- rede e broker
 const char* WIFI_SSID = "WIFI_IOT_CFP601";
 const char* WIFI_SENHA = "iot@senai601";
-// Broker público (HiveMQ): qualquer pessoa pode ler e publicar nestes tópicos — use só para
+// Broker público (shiftr.io, usuário/senha "public"): qualquer pessoa pode ler e publicar nestes tópicos — use só para
 // dados didáticos. Para broker local, troque pelo IP do computador (npm run broker ou Mosquitto).
-const char* BROKER = "broker.hivemq.com";
+const char* BROKER = "public.cloud.shiftr.io";
 const uint16_t PORTA = 1883;
+const char* MQTT_USUARIO = "public";  // deixe "" em broker sem autenticação
+const char* MQTT_SENHA = "public";
 const char* TOPICO_BASE = "tormax30/senai/torno01";  // deve ser igual ao "Tópico base" do app
 
 // ---------- pinos para ESP32-C3 Mini (ADAPTE). No C3 só GPIO0–4 têm ADC1; evite GPIO2, 8 e 9 (boot).
@@ -101,7 +103,7 @@ void conectarMqtt() {
   String status = String(TOPICO_BASE) + "/status";
   while (!mqtt.connected()) {
     String id = "esp32-torno-" + String((uint32_t)ESP.getEfuseMac(), HEX);
-    if (mqtt.connect(id.c_str(), status.c_str(), 1, true, "offline")) {
+    if (mqtt.connect(id.c_str(), MQTT_USUARIO, MQTT_SENHA, status.c_str(), 1, true, "offline")) {
       mqtt.publish(status.c_str(), "online", true);
     } else {
       delay(2000);
