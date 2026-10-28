@@ -4,8 +4,8 @@
   "leituraVelhaS": 10,
   "janelaGraficoS": 120,
   "mqtt": {
-    "url": "ws://localhost:9001",
-    "topicoBase": "senai/torno01",
+    "url": "wss://broker.hivemq.com:8884/mqtt",
+    "topicoBase": "tormax30/senai/torno01",
     "usuario": "",
     "senha": ""
   },

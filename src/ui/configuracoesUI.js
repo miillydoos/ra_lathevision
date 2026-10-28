@@ -35,7 +35,7 @@ export function criarConfiguracoesUI({ config, aoSalvar }) {
         <fieldset class="grupo-controle">
           <legend>Conexão ao vivo (MQTT sobre WebSocket)</legend>
           <label>Endereço do broker <input name="url" value="${escapar(m.url)}" placeholder="wss://broker.exemplo:8884/mqtt" spellcheck="false" /></label>
-          <label>Tópico base <input name="topicoBase" value="${escapar(m.topicoBase)}" placeholder="senai/torno01" spellcheck="false" /></label>
+          <label>Tópico base <input name="topicoBase" value="${escapar(m.topicoBase)}" placeholder="tormax30/senai/torno01" spellcheck="false" /></label>
           <div class="duas-colunas">
             <label>Usuário <input name="usuario" value="${escapar(m.usuario)}" autocomplete="off" /></label>
             <label>Senha <input name="senha" type="password" value="${escapar(m.senha)}" autocomplete="off" /></label>

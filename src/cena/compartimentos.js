@@ -15,9 +15,11 @@ import { criarEmissor } from "../util/emissor.js";
 // Olhando a lateral do cabeçote, -Z fica à esquerda (lado das dobradiças) e +Z à direita (lado do operador).
 // Os interiores estão modelados no torno.glb, seguindo as fotos da máquina real: na caixa de engrenagens, a
 // fundição com o ressalto do eixo-árvore, polia laranja em cima à esquerda (sensor de rotação logo abaixo),
-// lira com o trem de engrenagens à direita, placa guardada embaixo e o reservatório do sensor de nível; no
-// painel elétrico, placa de montagem, disjuntores, contatores, borneira, canaletas e fiação. Aqui eles só
-// ganham os sensores (montados na face do ressalto e no cabo do motor).
+// lira com o trem de engrenagens à direita, placa guardada embaixo e a mangueira azul que desce até o canto
+// do reservatório; no painel elétrico, placa de montagem, disjuntores, contatores, borneira, canaletas e
+// fiação. Aqui eles só ganham os sensores (montados na face do ressalto e no cabo do motor). O reservatório
+// quadrado do torno.glb sai de cena (removerReservatorioQuadrado): no lugar dele fica um reservatório
+// cilíndrico com o sensor ultrassônico de nível na tampa, onde a mangueira chega.
 export const COMPARTIMENTOS = [
   {
     id: "caixaEngrenagens",
@@ -29,16 +31,17 @@ export const COMPARTIMENTOS = [
     face: -1.335, // face do ressalto do eixo-árvore, dentro da janela do cabeçote (x = -1,400)
     porta: desenharDocumento, // folha de manutenção no lado de dentro da tampa
     vista: { alvo: [-1.42, 1.0, 0], alfa: Math.PI - 0.5, beta: 1.3, raio: 2.0 },
+    // reservatório cilíndrico de óleo, em pé no fundo da caixa (centro em x, z)
+    reservatorio: { x: -1.35, z: 0.216, base: 0.7, altura: 0.13, diametro: 0.078 },
     sensores: [
       { grandeza: "temperatura", tipo: "termometro", pos: [0.045, 1.215], etiqueta: [0.1, 0.075] },
       { grandeza: "vibracao", tipo: "acelerometro", pos: [-0.055, 1.215], etiqueta: [-0.1, 0.08] },
       { grandeza: "rotacao", tipo: "indutivo", pos: [-0.2, 1.03], etiqueta: [0.02, -0.12] },
-      { grandeza: "oleo", tipo: "nivel", pos: [0.215, 0.8], etiqueta: [-0.04, 0.1] },
       // encoder rotativo acoplado na ponta do eixo-árvore (centro do ressalto)
       { grandeza: "rotacao", tipo: "encoder", nome: "Encoder (rotação)", pos: [0, 1.132], etiqueta: [0.02, -0.105] },
-      // HC-SR04 sob a borda inferior da polia, com os transdutores voltados para baixo (entre a polia e o
-      // encoder, fora do alcance do sensor indutivo); sem grandeza própria: ainda sem leitura
-      { tipo: "ultrassonico", nome: "Sensor ultrassônico", icone: "onda", unidade: "mm", pos: [-0.14, 1.082], etiqueta: [-0.1, 0.075] },
+      // HC-SR04 na tampa do reservatório cilíndrico (no canto onde ficava o quadrado), transdutores voltados
+      // para baixo medindo a distância até o óleo; `pos` = centro da placa
+      { grandeza: "oleo", tipo: "ultrassonico", nome: "Nível de óleo (ultrassom)", pos: [0.216, 0.845], afastamento: 0.015, etiqueta: [-0.07, 0.1] },
     ],
   },
   {
@@ -51,12 +54,18 @@ export const COMPARTIMENTOS = [
     giro: -Math.PI / 2,
     face: -0.385, // z do mundo, à frente da régua de bornes
     vista: { alvo: [-1.07, 0.96, -0.46], alfa: -Math.PI / 2 + 0.35, beta: 1.33, raio: 1.75 },
-    // sensor de corrente não invasivo (núcleo dividido, tipo SCT-013) abraçando uma fase da alimentação do motor
+    // sensores de corrente não invasivos (núcleo dividido, YHDC SCT-013), um em cada fase da alimentação do motor
     sensores: [{ grandeza: "corrente", tipo: "tc", nome: "Corrente (SCT-013)", pos: [1.178, 0.825], etiqueta: [0, 0.075] }],
   },
 ];
 const LARGURA_ETIQUETA = 0.15; // m
 const ALTURA_ETIQUETA = 0.056;
+/** Antes de criarSelecao: tira de cena o reservatório quadrado (e o óleo dele) do torno.glb. */
+export function removerReservatorioQuadrado(modelo) {
+  const quadrado = /^Cabecote_fixo_engrenagens_(reservatorio|oleo)/;
+  for (const m of modelo.malhas) if (quadrado.test(m.name)) m.dispose();
+  modelo.malhas = modelo.malhas.filter((m) => !quadrado.test(m.name));
+}
 
 /**
  * Antes de criarSelecao: dá às tampas uma cópia própria de cada material, para a mescla de malhas
@@ -98,7 +107,7 @@ export function criarCompartimentos({ scene, camera, selecao, tampas, fluxo, con
       m.unfreezeWorldMatrix();
       m.setParent(eixo);
     }
-    const interior = criarInterior(scene, c);
+    const interior = criarInterior(scene, c, config);
     if (c.porta) {
       // lado de dentro da tampa (voltado para +X com a tampa fechada): gira junto com ela
       const doc = planoDesenhado(scene, `documento_${c.id}`, 0.2, 0.27, c.porta, 256);
@@ -114,7 +123,6 @@ export function criarCompartimentos({ scene, camera, selecao, tampas, fluxo, con
       aoAbrirGrandeza?.(id);
     };
     for (const s of interior.sensores) {
-      if (!s.id) continue; // sensor sem medição: não abre painel
       for (const m of s.malhas) selecao.registrarClicavel(m, abrirMedicao(s.id), selecao.porId(c.componente));
     }
     // k = quanto está aberta (0 fechada, 1 aberta); alvo = para onde vai quando ninguém está segurando
@@ -210,10 +218,9 @@ export function criarCompartimentos({ scene, camera, selecao, tampas, fluxo, con
   // ---------- estado das medições nos sensores (LED e etiqueta)
   function atualizarSensores() {
     for (const s of sensores) {
-      if (!s.id) continue;
       const e = fluxo.estado(s.id);
       const tv = textoValor(config, s.id, e.valor);
-      s.atualizar(ESTADOS[e.estado] ?? ESTADOS.semDados, tv);
+      s.atualizar(ESTADOS[e.estado] ?? ESTADOS.semDados, tv, e.valor);
     }
   }
   setInterval(() => comps.some((c) => c.k > 0) && atualizarSensores(), 250);
@@ -258,13 +265,68 @@ export function criarCompartimentos({ scene, camera, selecao, tampas, fluxo, con
 }
 
 // ---------- interior: sensores (o resto do interior está no torno.glb)
-function criarInterior(scene, c) {
+function criarInterior(scene, c, config) {
   const raiz = new TransformNode(`interior_${c.id}`, scene);
   raiz.rotation.y = c.giro ?? 0; // compartimento na traseira: o interior é montado girado
   const sensoresRaiz = new TransformNode(`sensores_${c.id}`, scene);
   sensoresRaiz.parent = raiz;
   const sensores = c.sensores.map((s) => criarSensor(scene, sensoresRaiz, c, s));
+  if (c.reservatorio) {
+    // o reservatório fica visível com a tampa entreaberta (como as peças do torno.glb); o óleo dentro
+    // sobe e desce com a medição de nível, e clicar nele abre a medição
+    const tanque = criarReservatorio(scene, raiz, c.reservatorio);
+    const nivel = sensores.find((s) => s.id === "oleo");
+    if (nivel) {
+      nivel.malhas.push(...tanque.malhas);
+      const atualizar = nivel.atualizar;
+      nivel.atualizar = (estado, tv, valor) => {
+        atualizar(estado, tv);
+        // com boia a leitura é 0 / 1 (baixo / ok), como no visor de nível
+        const boia = config.grandezas.oleo?.sensor === "boia";
+        tanque.definirNivel(boia && valor != null ? (valor >= 0.5 ? 80 : 15) : valor);
+      };
+    }
+  }
   return { raiz, sensoresRaiz, sensores, extras: [] };
+}
+
+/** Reservatório cilíndrico transparente com tampa e óleo; `definirNivel` recebe o nível em % (0 a 100). */
+function criarReservatorio(scene, raiz, r) {
+  const malhas = [];
+  const peca = (malha, material) => {
+    malha.material = material;
+    malha.parent = raiz;
+    malhas.push(malha);
+    return malha;
+  };
+  const plastico = new StandardMaterial("matReservatorioCilindrico", scene);
+  plastico.diffuseColor = new Color3(0.86, 0.9, 0.94);
+  plastico.specularColor = new Color3(0.5, 0.5, 0.5);
+  plastico.alpha = 0.28;
+  const oleo = new StandardMaterial("matOleoReservatorio", scene);
+  oleo.diffuseColor = Color3.FromHexString("#c98a1a");
+  oleo.emissiveColor = Color3.FromHexString("#c98a1a").scale(0.25);
+  oleo.alpha = 0.88;
+  const parede = peca(MeshBuilder.CreateCylinder("reservatorioCilindrico", { diameter: r.diametro, height: r.altura, tessellation: 40 }, scene), plastico);
+  parede.position.set(r.x, r.base + r.altura / 2, r.z);
+  const fundo = peca(MeshBuilder.CreateCylinder("reservatorioCilindrico", { diameter: r.diametro + 0.004, height: 0.006, tessellation: 40 }, scene), cor(scene, "#2b2f35"));
+  fundo.position.set(r.x, r.base + 0.003, r.z);
+  const tampa = peca(MeshBuilder.CreateCylinder("reservatorioCilindrico", { diameter: r.diametro + 0.006, height: 0.008, tessellation: 40 }, scene), cor(scene, "#2b2f35"));
+  tampa.position.set(r.x, r.base + r.altura + 0.004, r.z);
+  // marcas de mínimo e máximo na parede, do lado de fora (voltado para -X)
+  for (const [frac, hex] of [[0.25, "#e05555"], [0.85, "#4cc27a"]]) {
+    const marca = peca(MeshBuilder.CreateBox("reservatorioCilindrico", { width: 0.002, height: 0.003, depth: 0.018 }, scene), cor(scene, hex));
+    marca.position.set(r.x - r.diametro / 2 - 0.001, r.base + r.altura * frac, r.z);
+  }
+  const liquido = peca(MeshBuilder.CreateCylinder("oleoReservatorio", { diameter: r.diametro - 0.006, height: 1, tessellation: 40 }, scene), oleo);
+  const util = r.altura - 0.012; // entre o fundo e a tampa
+  function definirNivel(valor) {
+    const f = Math.max(0.02, Math.min(1, (valor ?? 60) / 100));
+    liquido.scaling.y = util * f;
+    liquido.position.set(r.x, r.base + 0.006 + (util * f) / 2, r.z);
+  }
+  definirNivel(null);
+  return { malhas, definirNivel };
 }
 
 /** Plano com imagem desenhada em canvas, sem sombreamento. */
@@ -303,8 +365,7 @@ function cor(scene, hex, especular = 0.25) {
 
 /** Corpo do sensor (geometria simples), LED de estado e etiqueta flutuante com valor. */
 function criarSensor(scene, raiz, c, s) {
-  // sensor sem grandeza (ultrassônico): só aparência e etiqueta, sempre "Sem dados"
-  const g = GRANDEZA_POR_ID[s.grandeza] ?? { id: s.tipo, nome: s.nome, icone: s.icone };
+  const g = GRANDEZA_POR_ID[s.grandeza];
   const nome = `${g.id}_${s.tipo}`;
   const [z, y] = s.pos;
   const x = c.face;
@@ -355,46 +416,54 @@ function criarSensor(scene, raiz, c, s) {
     const fio = peca(MeshBuilder.CreateCylinder("caboRot", { diameter: 0.008, height: 0.1 }, scene), cor(scene, "#2b7bd6", 0.2));
     fio.position.set(xs, y - 0.08, z);
     ponta = new Vector3(xs - 0.018, y - 0.012, z);
-  } else if (s.tipo === "nivel") {
-    // haste com boia mergulhada no banho de óleo
-    const cabeca = peca(MeshBuilder.CreateBox("sensorNivel", { width: 0.03, height: 0.028, depth: 0.04 }, scene), escuro);
-    cabeca.position.set(x - 0.022, y + 0.06, z);
-    const haste = peca(MeshBuilder.CreateCylinder("sensorNivel", { diameter: 0.008, height: 0.13 }, scene), metal);
-    haste.position.set(x - 0.022, y - 0.01, z);
-    const boia = peca(MeshBuilder.CreateCylinder("sensorNivel", { diameter: 0.032, height: 0.024, tessellation: 24 }, scene), cor(scene, "#e8b400", 0.3));
-    boia.position.set(x - 0.022, y - 0.04, z);
-    ponta = new Vector3(x - 0.04, y + 0.06, z);
   } else if (s.tipo === "tc") {
-    // sensor não invasivo de núcleo dividido (SCT-013) fechado em volta de uma das três fases que alimentam
-    // o motor (preta, cinza e marrom): não há contato elétrico, ele só abraça o cabo
-    const xc = x - 0.016;
+    // YHDC SCT-013 (núcleo dividido, não invasivo) fechado em volta de cada uma das três fases que alimentam
+    // o motor (preta, cinza e marrom): bloco azul com a janela quadrada atravessada pelo cabo, deitado com o
+    // rótulo para cima e o cabo preto de saída descendo pela ponta voltada para fora
+    const xc = x - 0.02; // eixo das fases
+    const azul = cor(scene, "#2f8fd8", 0.35);
+    const azulEscuro = cor(scene, "#1f6fb0", 0.3);
+    const J = 0.013; // janela (13 mm)
+    const T = 0.026; // espessura do bloco (no sentido do cabo)
+    const W = 0.031; // largura
+    const traseira = 0.0055; // barra atrás da janela
+    const frente = 0.024; // bloco da frente, com o rótulo
+    const xFrente = xc - J / 2 - frente; // ponta voltada para fora
+    const rotulo = planoDesenhado(scene, "rotuloSCT013", frente - 0.003, W - 0.006, desenharRotuloSCT, 256);
+    rotulo.rotation.set(Math.PI / 2, Math.PI / 2, 0);
     ["#16191d", "#7d838a", "#6b4426"].forEach((hex, i) => {
-      const fase = peca(MeshBuilder.CreateCylinder("caboMotor", { diameter: 0.012, height: 0.32 }, scene), cor(scene, hex, 0.1));
-      fase.position.set(xc, y + 0.04, z + i * 0.024);
+      const zf = z + i * 0.036;
+      const fase = peca(MeshBuilder.CreateCylinder("caboMotor", { diameter: 0.011, height: 0.32 }, scene), cor(scene, hex, 0.1));
+      fase.position.set(xc, y + 0.04, zf);
+      const bloco = (w, d, material, cx, cz, h = T, cy = y) => {
+        const m = peca(MeshBuilder.CreateBox("sensorCorrente", { width: w, height: h, depth: d }, scene), material);
+        m.position.set(cx, cy, cz);
+        return m;
+      };
+      bloco(traseira, W, azul, xc + J / 2 + traseira / 2, zf); // atrás da janela
+      for (const lado of [-1, 1]) bloco(J, (W - J) / 2, azul, xc, zf + (lado * (W + J)) / 4); // laterais da janela
+      bloco(frente, W, azul, xc - J / 2 - frente / 2, zf); // frente (rótulo)
+      // a parte que abre (dobradiça e trava) fica um pouco saliente num dos lados, como na foto
+      bloco(J + traseira + 0.006, 0.003, azulEscuro, xc + traseira / 2 - 0.003, zf - W / 2 - 0.0015, T - 0.004);
+      bloco(0.006, 0.004, azulEscuro, xc - J / 2 - 0.003, zf - W / 2 - 0.002, T - 0.008);
+      // núcleo de ferrite aparecendo nas bordas da janela
+      for (const lado of [-1, 1]) bloco(0.0015, J - 0.003, escuro, xc + (lado * (J - 0.0015)) / 2, zf, T + 0.0004);
+      const r = rotulo.clone("rotuloSCT013");
+      r.position.set(xc - J / 2 - frente / 2 - 0.0005, y + T / 2 + 0.0004, zf);
+      r.parent = raiz;
+      malhas.push(r);
+      // cabo preto de saída pela ponta, descendo até o ESP32
+      const prensa = peca(MeshBuilder.CreateCylinder("caboTC", { diameter: 0.0065, height: 0.005 }, scene), azulEscuro);
+      prensa.rotation.z = Math.PI / 2;
+      prensa.position.set(xFrente - 0.0025, y - 0.004, zf);
+      const saida = peca(MeshBuilder.CreateCylinder("caboTC", { diameter: 0.0042, height: 0.012 }, scene), cabo);
+      saida.rotation.z = Math.PI / 2;
+      saida.position.set(xFrente - 0.008, y - 0.004, zf);
+      const desce = peca(MeshBuilder.CreateCylinder("caboTC", { diameter: 0.0042, height: 0.13 }, scene), cabo);
+      desce.position.set(xFrente - 0.014, y - 0.004 - 0.065, zf);
     });
-    const corpo = cor(scene, "#24364d", 0.3);
-    const anel = peca(MeshBuilder.CreateTorus("sensorCorrente", { diameter: 0.042, thickness: 0.016, tessellation: 28 }, scene), corpo);
-    anel.position.set(xc, y, z);
-    // linha de abertura do núcleo (o lado que destrava e abre para encaixar no cabo)
-    const fenda = peca(MeshBuilder.CreateBox("sensorCorrente", { width: 0.019, height: 0.017, depth: 0.0012 }, scene), cor(scene, "#0c0f13", 0.1));
-    fenda.position.set(xc, y, z + 0.021);
-    const trava = peca(MeshBuilder.CreateBox("sensorCorrente", { width: 0.012, height: 0.006, depth: 0.007 }, scene), escuro);
-    trava.position.set(xc, y - 0.0095, z + 0.021);
-    const caixa = peca(MeshBuilder.CreateBox("sensorCorrente", { width: 0.018, height: 0.03, depth: 0.026 }, scene), corpo);
-    caixa.position.set(xc, y, z - 0.034);
-    const rotulo = peca(MeshBuilder.CreateBox("sensorCorrente", { width: 0.0012, height: 0.018, depth: 0.018 }, scene), cor(scene, "#eceff2", 0.2));
-    rotulo.position.set(xc - 0.0095, y, z - 0.034);
-    // cabo de saída com plugue P2 (3,5 mm) até o ESP32
-    const saida = peca(MeshBuilder.CreateCylinder("caboTC", { diameter: 0.004, height: 0.1 }, scene), cabo);
-    saida.rotation.x = Math.PI / 2;
-    saida.position.set(xc, y, z - 0.097);
-    const plugue = peca(MeshBuilder.CreateCylinder("caboTC", { diameter: 0.007, height: 0.018 }, scene), escuro);
-    plugue.rotation.x = Math.PI / 2;
-    plugue.position.set(xc, y, z - 0.156);
-    const pinoP2 = peca(MeshBuilder.CreateCylinder("caboTC", { diameter: 0.0035, height: 0.012 }, scene), metal);
-    pinoP2.rotation.x = Math.PI / 2;
-    pinoP2.position.set(xc, y, z - 0.171);
-    ponta = new Vector3(x - 0.026, y + 0.012, z - 0.034);
+    rotulo.dispose();
+    ponta = new Vector3(xFrente + 0.004, y + T / 2 + 0.004, z + W / 2 - 0.005);
   } else if (s.tipo === "encoder") {
     // encoder de eixo (tipo E40S): acoplamento na ponta do eixo-árvore (x = -1,378), flange de alumínio
     // e corpo preto voltados para fora, cabo saindo pela lateral
@@ -409,9 +478,9 @@ function criarSensor(scene, raiz, c, s) {
     fio.position.set(corpo.position.x, y - 0.07, z);
     ponta = new Vector3(x - 0.08, y, z);
   } else if (s.tipo === "ultrassonico") {
-    // HC-SR04 deitado: placa azul na horizontal com os dois transdutores apontando para baixo e os quatro
-    // pinos saindo pela borda de fora, presa por uma cantoneira à face do ressalto
-    const xp = x - 0.035; // centro da placa (20 mm de largura em X)
+    // HC-SR04 deitado na tampa do reservatório: placa azul na horizontal sobre quatro espaçadores, os dois
+    // transdutores atravessando a tampa e apontando para o óleo, e a mangueira azul chegando no conector
+    const xp = x - (s.afastamento ?? 0); // centro da placa (20 mm de largura em X)
     const placa = peca(MeshBuilder.CreateBox("sensorUltrassom", { width: 0.02, height: 0.0016, depth: 0.045 }, scene), cor(scene, "#1f5fae", 0.3));
     placa.position.set(xp, y, z);
     for (const lado of [-1, 1]) {
@@ -419,18 +488,19 @@ function criarSensor(scene, raiz, c, s) {
       transdutor.position.set(xp, y - 0.0068, z + lado * 0.0135);
       const tela = peca(MeshBuilder.CreateCylinder("sensorUltrassom", { diameter: 0.013, height: 0.001, tessellation: 28 }, scene), escuro);
       tela.position.set(xp, y - 0.0133, z + lado * 0.0135);
+      for (const canto of [-1, 1]) {
+        const espacador = peca(MeshBuilder.CreateCylinder("sensorUltrassom", { diameter: 0.003, height: 0.0062 }, scene), metal);
+        espacador.position.set(xp + canto * 0.0075, y - 0.0039, z + lado * 0.0205);
+      }
     }
     const cristal = peca(MeshBuilder.CreateBox("sensorUltrassom", { width: 0.004, height: 0.003, depth: 0.01 }, scene), metal);
     cristal.position.set(xp + 0.0065, y + 0.0023, z);
     const conector = peca(MeshBuilder.CreateBox("sensorUltrassom", { width: 0.003, height: 0.003, depth: 0.011 }, scene), escuro);
     conector.position.set(xp - 0.0085, y + 0.0023, z);
-    for (let i = 0; i < 4; i++) {
-      const pino = peca(MeshBuilder.CreateBox("sensorUltrassom", { width: 0.009, height: 0.0007, depth: 0.0007 }, scene), cor(scene, "#c9ccd1", 0.8));
-      pino.position.set(xp - 0.0145, y + 0.0023, z - 0.0038 + i * 0.00254);
-    }
-    const cantoneira = peca(MeshBuilder.CreateBox("sensorUltrassom", { width: 0.035, height: 0.012, depth: 0.004 }, scene), escuro);
-    cantoneira.position.set(x - 0.0175, y + 0.005, z - 0.0245);
-    ponta = new Vector3(xp, y + 0.006, z);
+    // plugue onde termina a mangueira do torno.glb (x = -1,359; y = 0,859; z = 0,198)
+    const plugue = peca(MeshBuilder.CreateBox("sensorUltrassom", { width: 0.009, height: 0.014, depth: 0.009 }, scene), escuro);
+    plugue.position.set(xp - 0.009, y + 0.0073, z - 0.018);
+    ponta = new Vector3(xp + 0.004, y + 0.006, z + 0.006);
   }
 
   // LED de estado
@@ -466,7 +536,7 @@ function criarSensor(scene, raiz, c, s) {
 
   let anterior = "";
   const sensor = {
-    id: s.grandeza ? g.id : null,
+    id: g.id,
     malhas,
     atualizar(estado, tv) {
       const chave = `${estado.id}|${tv.valor}|${tv.unidade}`;
@@ -478,7 +548,7 @@ function criarSensor(scene, raiz, c, s) {
     },
   };
   // desenha já na criação: textura nunca atualizada deixa a cena "não pronta" (whenReadyAsync não termina)
-  sensor.atualizar(ESTADOS.semDados, { valor: "—", unidade: s.unidade ?? "" });
+  sensor.atualizar(ESTADOS.semDados, { valor: "—", unidade: "" });
   return sensor;
 }
 
@@ -540,4 +610,22 @@ function desenharDocumento(ctx, w, h) {
     ctx.lineTo(x, h - 30);
     ctx.stroke();
   }
+}
+
+/** Rótulo do SCT-013 no bloco azul (como no sensor real). */
+function desenharRotuloSCT(ctx, w, h) {
+  ctx.fillStyle = "#2f8fd8";
+  ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = "#14243a";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = `italic 900 ${Math.round(h * 0.2)}px Arial Black, Arial, sans-serif`;
+  ctx.fillText("YHDC®", w / 2, h * 0.17);
+  ctx.font = `700 ${Math.round(h * 0.12)}px Arial, sans-serif`;
+  ctx.fillText("CE", w / 2, h * 0.36);
+  ctx.font = `500 ${Math.round(h * 0.13)}px Arial, sans-serif`;
+  ctx.fillText("SCT013", w / 2, h * 0.53);
+  ctx.fillText("100A:50mA", w / 2, h * 0.7);
+  ctx.font = `600 ${Math.round(h * 0.1)}px Arial, sans-serif`;
+  ctx.fillText("www.yhdc.com", w / 2, h * 0.87);
 }

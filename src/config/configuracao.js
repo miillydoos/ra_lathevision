@@ -5,7 +5,7 @@ const PADRAO = {
   maquina: "Torno ROMI T 350",
   leituraVelhaS: 10,
   janelaGraficoS: 120,
-  mqtt: { url: "ws://localhost:9001", topicoBase: "senai/torno01", usuario: "", senha: "" },
+  mqtt: { url: "wss://broker.hivemq.com:8884/mqtt", topicoBase: "tormax30/senai/torno01", usuario: "", senha: "" },
   grandezas: {
     temperatura: { sentido: "acima", atencao: 50, alarme: 60, escala: [15, 80] },
     oleo: { sensor: "continuo", sentido: "abaixo", atencao: 40, alarme: 25, escala: [0, 100] },

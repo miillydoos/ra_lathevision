@@ -1,8 +1,8 @@
 // Publicador de teste: faz o papel do ESP32 usando o mesmo modelo da simulação.
-//   npm run publicador -- --url mqtt://localhost:1883 --base senai/torno01 --cenario vibracao
+//   npm run publicador -- --url mqtt://broker.hivemq.com:1883 --base tormax30/senai/torno01 --cenario vibracao
 // Opções:
 //   --url       broker (padrão mqtt://localhost:1883)
-//   --base      tópico base (padrão senai/torno01)
+//   --base      tópico base (padrão tormax30/senai/torno01)
 //   --cenario   normal | aquecimento | oleoBaixo | vibracao (padrão normal)
 //   --apos      segundos até aplicar o cenário (padrão 30)
 //   --formato   topicos (um tópico por grandeza) | json (tudo em <base>/leituras)
@@ -15,7 +15,7 @@ const args = Object.fromEntries(
   process.argv.slice(2).reduce((pares, a, i, lista) => (a.startsWith("--") ? [...pares, [a.slice(2), lista[i + 1]]] : pares), []),
 );
 const url = args.url ?? "mqtt://localhost:1883";
-const base = (args.base ?? "senai/torno01").replace(/\/+$/, "");
+const base = (args.base ?? "tormax30/senai/torno01").replace(/\/+$/, "");
 const formato = args.formato ?? "topicos";
 const acelerar = Number(args.acelerar ?? 1);
 const cenario = iniciarCenario(args.cenario ?? "normal", { inicio: Number(args.apos ?? 30) });

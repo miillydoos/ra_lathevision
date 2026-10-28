@@ -17,18 +17,20 @@
 #include <time.h>
 
 // ---------- rede e broker
-const char* WIFI_SSID = "SUA_REDE";
-const char* WIFI_SENHA = "SUA_SENHA";
-const char* BROKER = "192.168.0.10";  // IP do computador com o broker (npm run broker ou Mosquitto)
+const char* WIFI_SSID = "WIFI_IOT_CFP601";
+const char* WIFI_SENHA = "iot@senai601";
+// Broker público (HiveMQ): qualquer pessoa pode ler e publicar nestes tópicos — use só para
+// dados didáticos. Para broker local, troque pelo IP do computador (npm run broker ou Mosquitto).
+const char* BROKER = "broker.hivemq.com";
 const uint16_t PORTA = 1883;
-const char* TOPICO_BASE = "senai/torno01";
+const char* TOPICO_BASE = "tormax30/senai/torno01";  // deve ser igual ao "Tópico base" do app
 
-// ---------- pinos (ADAPTE)
-const int PINO_DS18B20 = 4;        // temperatura da carcaça do cabeçote
-const int PINO_NIVEL = 34;         // sensor de nível analógico (0–3,3 V) ou chave de boia
-const int PINO_CORRENTE = 35;      // saída do condicionador do TC (ex.: SCT-013 + circuito de polarização)
-const int PINO_VIBRACAO = 32;      // transmissor de vibração com saída proporcional a mm/s RMS
-const int PINO_PULSO_ROTACAO = 27; // sensor indutivo/hall: 1 pulso por volta do eixo-árvore
+// ---------- pinos para ESP32-C3 Mini (ADAPTE). No C3 só GPIO0–4 têm ADC1; evite GPIO2, 8 e 9 (boot).
+const int PINO_DS18B20 = 5;        // temperatura da carcaça do cabeçote
+const int PINO_NIVEL = 0;          // sensor de nível analógico (0–3,3 V) ou chave de boia
+const int PINO_CORRENTE = 1;       // saída do condicionador do TC (ex.: SCT-013 + circuito de polarização)
+const int PINO_VIBRACAO = 3;       // transmissor de vibração com saída proporcional a mm/s RMS
+const int PINO_PULSO_ROTACAO = 4;  // sensor indutivo/hall: 1 pulso por volta do eixo-árvore
 
 WiFiClient wifi;
 PubSubClient mqtt(wifi);

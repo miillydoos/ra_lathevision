@@ -6,7 +6,7 @@ import { criarSelecao } from "./cena/selecao.js";
 import { criarPontosSensores } from "./cena/pontosSensores.js";
 import { criarAnimacaoPlaca } from "./cena/placa.js";
 import { criarSala } from "./cena/sala.js";
-import { criarCompartimentos, separarTampas } from "./cena/compartimentos.js";
+import { criarCompartimentos, removerReservatorioQuadrado, separarTampas } from "./cena/compartimentos.js";
 import { sincronizarCena } from "./cena/sincronizarCena.js";
 import { iniciarXR } from "./xr/xr.js";
 import { criarPainelXR } from "./xr/painelXR.js";
@@ -46,6 +46,7 @@ async function iniciar() {
     carregarModelo(scene, { url: "./models/torno.glb", aoProgresso: progressoCarregamento }),
   ]);
 
+  removerReservatorioQuadrado(modelo); // no lugar dele fica o reservatório cilíndrico com o sensor ultrassônico
   const tampas = separarTampas(modelo); // painel elétrico e tampa lateral não se fundem com o corpo
   const selecao = criarSelecao(scene, modelo);
   prepararMalhas(modelo, selecao.malhas, sombras);
