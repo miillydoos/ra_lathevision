@@ -31,8 +31,9 @@ export const COMPARTIMENTOS = [
     face: -1.335, // face do ressalto do eixo-árvore, dentro da janela do cabeçote (x = -1,400)
     porta: desenharDocumento, // folha de manutenção no lado de dentro da tampa
     vista: { alvo: [-1.42, 1.0, 0], alfa: Math.PI - 0.5, beta: 1.3, raio: 2.0 },
-    // reservatório cilíndrico de óleo, em pé abaixo da polia, entre a correia e a parede -Z (centro em x, z)
-    reservatorio: { x: -1.35, z: -0.24, base: 0.92, altura: 0.13, diametro: 0.078 },
+    // reservatório cilíndrico de óleo, em pé logo abaixo da polia (centro em x, z): fica entre a placa guardada
+    // (y ≤ 0,932) e a polia (y ≥ 1,07), na frente da correia (x ≥ -1,33) e fora de trás da porta aberta
+    reservatorio: { x: -1.366, z: -0.165, base: 0.937, altura: 0.1, diametro: 0.06 },
     sensores: [
       { grandeza: "temperatura", tipo: "termometro", pos: [0.045, 1.215], etiqueta: [0.1, 0.075] },
       { grandeza: "vibracao", tipo: "acelerometro", pos: [-0.055, 1.215], etiqueta: [-0.1, 0.08] },
@@ -40,7 +41,7 @@ export const COMPARTIMENTOS = [
       { grandeza: "rotacao", tipo: "encoder", nome: "Encoder (rotação)", pos: [0, 1.132], etiqueta: [0.02, -0.105] },
       // HC-SR04 na tampa do reservatório cilíndrico, transdutores voltados para baixo medindo a distância até
       // o óleo; `pos` = centro da placa (y = base + altura do reservatório + 0,015)
-      { grandeza: "oleo", tipo: "ultrassonico", nome: "Nível de óleo (ultrassom)", pos: [-0.24, 1.065], afastamento: 0.015, etiqueta: [0.03, -0.175] },
+      { grandeza: "oleo", tipo: "ultrassonico", nome: "Nível de óleo (ultrassom)", pos: [-0.165, 1.052], afastamento: 0.015, etiqueta: [-0.07, -0.12] },
     ],
   },
   {
@@ -53,7 +54,7 @@ export const COMPARTIMENTOS = [
     giro: -Math.PI / 2,
     face: -0.385, // z do mundo, à frente da régua de bornes
     vista: { alvo: [-1.07, 0.96, -0.46], alfa: -Math.PI / 2 + 0.35, beta: 1.33, raio: 1.75 },
-    // sensores de corrente não invasivos (núcleo dividido, YHDC SCT-013), um em cada fase da alimentação do motor
+    // sensor de corrente não invasivo (núcleo dividido, YHDC SCT-013) em uma das fases da alimentação do motor
     sensores: [{ grandeza: "corrente", tipo: "tc", nome: "Corrente (SCT-013)", pos: [1.178, 0.825], etiqueta: [0, 0.075] }],
   },
 ];
@@ -416,9 +417,9 @@ function criarSensor(scene, raiz, c, s) {
     fio.position.set(xs, y - 0.08, z);
     ponta = new Vector3(xs - 0.018, y - 0.012, z);
   } else if (s.tipo === "tc") {
-    // YHDC SCT-013 (núcleo dividido, não invasivo) fechado em volta de cada uma das três fases que alimentam
-    // o motor (preta, cinza e marrom): bloco azul com a janela quadrada atravessada pelo cabo, deitado com o
-    // rótulo para cima e o cabo preto de saída descendo pela ponta voltada para fora
+    // YHDC SCT-013 (núcleo dividido, não invasivo) fechado em volta de uma só das três fases que alimentam
+    // o motor (preta, cinza e marrom), a preta: bloco azul com a janela quadrada atravessada pelo cabo,
+    // deitado com o rótulo para cima e o cabo preto de saída descendo pela ponta voltada para fora
     const xc = x - 0.02; // eixo das fases
     const azul = cor(scene, "#2f8fd8", 0.35);
     const azulEscuro = cor(scene, "#1f6fb0", 0.3);
@@ -434,6 +435,7 @@ function criarSensor(scene, raiz, c, s) {
       const zf = z + i * 0.036;
       const fase = peca(MeshBuilder.CreateCylinder("caboMotor", { diameter: 0.011, height: 0.32 }, scene), cor(scene, hex, 0.1));
       fase.position.set(xc, y + 0.04, zf);
+      if (i > 0) return; // as outras duas fases passam direto, sem sensor
       const bloco = (w, d, material, cx, cz, h = T, cy = y) => {
         const m = peca(MeshBuilder.CreateBox("sensorCorrente", { width: w, height: h, depth: d }, scene), material);
         m.position.set(cx, cy, cz);
