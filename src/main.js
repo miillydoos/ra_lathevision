@@ -47,7 +47,7 @@ async function iniciar() {
     carregarModelo(scene, { url: "./models/torno.glb", aoProgresso: progressoCarregamento }),
   ]);
 
-  removerReservatorioQuadrado(modelo); // no lugar dele fica o reservatório cilíndrico com o sensor ultrassônico
+  removerReservatorioQuadrado(modelo); // e a mangueira; o reservatório cilíndrico com o sensor ultrassônico fica abaixo da polia
   const tampas = separarTampas(modelo); // painel elétrico e tampa lateral não se fundem com o corpo
   const selecao = criarSelecao(scene, modelo);
   prepararMalhas(modelo, selecao.malhas, sombras);

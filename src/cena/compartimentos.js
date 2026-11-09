@@ -14,12 +14,12 @@ import { criarEmissor } from "../util/emissor.js";
 // mundo); `vista` = câmera do botão Sensores, que vai ao compartimento do lado em que a câmera já está.
 // Olhando a lateral do cabeçote, -Z fica à esquerda (lado das dobradiças) e +Z à direita (lado do operador).
 // Os interiores estão modelados no torno.glb, seguindo as fotos da máquina real: na caixa de engrenagens, a
-// fundição com o ressalto do eixo-árvore, polia laranja em cima à esquerda (sensor de rotação logo abaixo),
-// lira com o trem de engrenagens à direita, placa guardada embaixo e a mangueira azul que desce até o canto
-// do reservatório; no painel elétrico, placa de montagem, disjuntores, contatores, borneira, canaletas e
-// fiação. Aqui eles só ganham os sensores (montados na face do ressalto e no cabo do motor). O reservatório
-// quadrado do torno.glb sai de cena (removerReservatorioQuadrado): no lugar dele fica um reservatório
-// cilíndrico com o sensor ultrassônico de nível na tampa, onde a mangueira chega.
+// fundição com o ressalto do eixo-árvore, polia laranja em cima à esquerda, lira com o trem de engrenagens
+// à direita e placa guardada embaixo; no painel elétrico, placa de montagem, disjuntores, contatores,
+// borneira, canaletas e fiação. Aqui eles só ganham os sensores (montados na face do ressalto e no cabo do
+// motor). O reservatório quadrado do torno.glb (no canto de baixo) e a mangueira azul que descia até ele
+// saem de cena (removerReservatorioQuadrado): o reservatório cilíndrico, com o sensor ultrassônico de nível
+// na tampa, fica em cima à esquerda, abaixo da polia.
 export const COMPARTIMENTOS = [
   {
     id: "caixaEngrenagens",
@@ -31,17 +31,16 @@ export const COMPARTIMENTOS = [
     face: -1.335, // face do ressalto do eixo-árvore, dentro da janela do cabeçote (x = -1,400)
     porta: desenharDocumento, // folha de manutenção no lado de dentro da tampa
     vista: { alvo: [-1.42, 1.0, 0], alfa: Math.PI - 0.5, beta: 1.3, raio: 2.0 },
-    // reservatório cilíndrico de óleo, em pé no fundo da caixa (centro em x, z)
-    reservatorio: { x: -1.35, z: 0.216, base: 0.7, altura: 0.13, diametro: 0.078 },
+    // reservatório cilíndrico de óleo, em pé abaixo da polia, entre a correia e a parede -Z (centro em x, z)
+    reservatorio: { x: -1.35, z: -0.24, base: 0.92, altura: 0.13, diametro: 0.078 },
     sensores: [
       { grandeza: "temperatura", tipo: "termometro", pos: [0.045, 1.215], etiqueta: [0.1, 0.075] },
       { grandeza: "vibracao", tipo: "acelerometro", pos: [-0.055, 1.215], etiqueta: [-0.1, 0.08] },
-      { grandeza: "rotacao", tipo: "indutivo", pos: [-0.2, 1.03], etiqueta: [0.02, -0.12] },
       // encoder rotativo acoplado na ponta do eixo-árvore (centro do ressalto)
       { grandeza: "rotacao", tipo: "encoder", nome: "Encoder (rotação)", pos: [0, 1.132], etiqueta: [0.02, -0.105] },
-      // HC-SR04 na tampa do reservatório cilíndrico (no canto onde ficava o quadrado), transdutores voltados
-      // para baixo medindo a distância até o óleo; `pos` = centro da placa
-      { grandeza: "oleo", tipo: "ultrassonico", nome: "Nível de óleo (ultrassom)", pos: [0.216, 0.845], afastamento: 0.015, etiqueta: [-0.07, 0.1] },
+      // HC-SR04 na tampa do reservatório cilíndrico, transdutores voltados para baixo medindo a distância até
+      // o óleo; `pos` = centro da placa (y = base + altura do reservatório + 0,015)
+      { grandeza: "oleo", tipo: "ultrassonico", nome: "Nível de óleo (ultrassom)", pos: [-0.24, 1.065], afastamento: 0.015, etiqueta: [0.03, -0.175] },
     ],
   },
   {
@@ -60,9 +59,9 @@ export const COMPARTIMENTOS = [
 ];
 const LARGURA_ETIQUETA = 0.15; // m
 const ALTURA_ETIQUETA = 0.056;
-/** Antes de criarSelecao: tira de cena o reservatório quadrado (e o óleo dele) do torno.glb. */
+/** Antes de criarSelecao: tira de cena o reservatório quadrado (e o óleo dele) e a mangueira do torno.glb. */
 export function removerReservatorioQuadrado(modelo) {
-  const quadrado = /^Cabecote_fixo_engrenagens_(reservatorio|oleo)/;
+  const quadrado = /^Cabecote_fixo_engrenagens_(reservatorio|oleo|mangueira)/;
   for (const m of modelo.malhas) if (quadrado.test(m.name)) m.dispose();
   modelo.malhas = modelo.malhas.filter((m) => !quadrado.test(m.name));
 }
@@ -479,7 +478,7 @@ function criarSensor(scene, raiz, c, s) {
     ponta = new Vector3(x - 0.08, y, z);
   } else if (s.tipo === "ultrassonico") {
     // HC-SR04 deitado na tampa do reservatório: placa azul na horizontal sobre quatro espaçadores, os dois
-    // transdutores atravessando a tampa e apontando para o óleo, e a mangueira azul chegando no conector
+    // transdutores atravessando a tampa e apontando para o óleo, e o conector do cabo
     const xp = x - (s.afastamento ?? 0); // centro da placa (20 mm de largura em X)
     const placa = peca(MeshBuilder.CreateBox("sensorUltrassom", { width: 0.02, height: 0.0016, depth: 0.045 }, scene), cor(scene, "#1f5fae", 0.3));
     placa.position.set(xp, y, z);
@@ -497,7 +496,6 @@ function criarSensor(scene, raiz, c, s) {
     cristal.position.set(xp + 0.0065, y + 0.0023, z);
     const conector = peca(MeshBuilder.CreateBox("sensorUltrassom", { width: 0.003, height: 0.003, depth: 0.011 }, scene), escuro);
     conector.position.set(xp - 0.0085, y + 0.0023, z);
-    // plugue onde termina a mangueira do torno.glb (x = -1,359; y = 0,859; z = 0,198)
     const plugue = peca(MeshBuilder.CreateBox("sensorUltrassom", { width: 0.009, height: 0.014, depth: 0.009 }, scene), escuro);
     plugue.position.set(xp - 0.009, y + 0.0073, z - 0.018);
     ponta = new Vector3(xp + 0.004, y + 0.006, z + 0.006);
