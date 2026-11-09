@@ -552,7 +552,7 @@ function criarSensor(scene, raiz, c, s) {
   return sensor;
 }
 
-function desenharEtiqueta(ctx, g, estado, tv, nome = `Sensor de ${g.nome.toLowerCase()}`) {
+export function desenharEtiqueta(ctx, g, estado, tv, nome = `Sensor de ${g.nome.toLowerCase()}`) {
   const W = 320;
   const H = 120;
   ctx.clearRect(0, 0, W, H);

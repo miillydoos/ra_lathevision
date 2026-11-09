@@ -17,6 +17,9 @@ import {
   Vector3,
 } from "@babylonjs/core";
 import { GRANDEZA_POR_ID } from "../config/grandezas.js";
+import { ESTADOS } from "../config/estados.js";
+import { textoValor } from "../ui/sensoresUI.js";
+import { desenharEtiqueta } from "./compartimentos.js";
 import { svgIcone } from "../util/icones.js";
 import { criarEmissor } from "../util/emissor.js";
 
@@ -50,6 +53,7 @@ const PX_POR_M = 4000; // resolução das texturas desenhadas (4 px/mm)
 const px = (u) => -W / 2 + E + u * (W - 2 * E);
 const pz = (v) => -L / 2 + E + v * (L - 2 * E);
 const Y_PLACA = E + 0.0018; // face de cima da placa branca
+const MPU = { u: 0.235, v: 0.505, y: Y_PLACA + 0.0085 }; // MPU-6050 (o sensor de vibração), sobre a barra de pinos
 const Z_PRENSA_CABO = -L / 2 - 0.0105; // prensa-cabo no tampo, atrás da parede -Z, alinhado com o furo dos cabos
 
 /**
@@ -77,6 +81,7 @@ export function criarCaixaMonitoramento({ scene, camera, selecao, fluxo, config 
   raiz.position.set(...CAIXA.posicao);
   raiz.rotationQuaternion = Quaternion.Identity();
   const malhas = raiz.getChildMeshes(false);
+  const chamada = criarChamadaVibracao(scene, raiz); // fora de `malhas`: não é clicável nem muda de grupo
 
   // prensa-cabo no tampo do cabeçote, por onde os cabos descem até os sensores (fica no torno)
   const [cx, cy, cz] = CAIXA.posicao;
@@ -113,7 +118,7 @@ export function criarCaixaMonitoramento({ scene, camera, selecao, fluxo, config 
       <h3>Sistema de monitoramento</h3>
       <button type="button" class="fechar" aria-label="Fechar">${svgIcone("fechar", { tamanho: 18 })}</button>
     </header>
-    <p>ESP32-C3 com o acelerômetro MPU-6050 (vibração), o módulo de termopar HW-550 (MAX6675), dois optoacopladores e os bornes dos sensores. Na tampa, o LCD 16×2 mostra as leituras.</p>
+    <p>ESP32-C3 com o acelerômetro MPU-6050 (o sensor de vibração, a placa azul de baixo), o módulo de termopar HW-550 (MAX6675), dois optoacopladores e os bornes dos sensores. Na tampa, o LCD 16×2 mostra as leituras.</p>
     <p class="sutil">Arraste para girar · role para aproximar · Esc ou clique fora para fechar</p>`;
   legenda.querySelector(".fechar").addEventListener("click", () => fechar());
   (document.getElementById("hud") ?? document.body).appendChild(legenda);
@@ -289,6 +294,7 @@ export function criarCaixaMonitoramento({ scene, camera, selecao, fluxo, config 
     // voo de ida até 70% do tempo; a tampa abre a partir da metade (na volta, fecha antes de voar)
     const kVoo = suave(limitar(k / 0.7));
     const kTampa = suave(limitar((k - 0.5) / 0.5));
+    chamada.raiz.setEnabled(kTampa === 1); // a etiqueta só aparece com a caixa parada na frente da tela
     if (k === 0) {
       raiz.position.copyFrom(repouso.posicao);
       raiz.rotationQuaternion.copyFrom(repouso.rotacao);
@@ -333,6 +339,14 @@ export function criarCaixaMonitoramento({ scene, camera, selecao, fluxo, config 
     lcd.escrever(pagina.map(linhaLcd));
   };
   setInterval(atualizarLcd, 500);
+
+  // ---------- etiqueta do sensor de vibração (MPU-6050) com a leitura atual, como as dos compartimentos
+  const atualizarChamada = () => {
+    const e = fluxo.estado("vibracao");
+    chamada.atualizar(ESTADOS[e.estado] ?? ESTADOS.semDados, textoValor(config, "vibracao", e.valor));
+  };
+  setInterval(() => alvo === 1 && atualizarChamada(), 250);
+  atualizarChamada();
   atualizarLcd();
 
   return {
@@ -501,10 +515,10 @@ function montarCorpo(p, raiz) {
   for (const s of [-1, 1]) p.bloco(raiz, [0.0034, 0.0014, 0.0024], branco, [px(0.505) + 0.0045, yEsp + 0.0013, pz(0.435) + s * 0.005]);
 
   // MPU-6050 (GY-521), sobre a barra de pinos na borda +X; passa da borda da placa
-  const yMpu = Y_PLACA + 0.0085;
-  p.bloco(raiz, [0.016, 0.0016, 0.021], azul, [px(0.235), yMpu, pz(0.505)]);
-  p.bloco(raiz, [0.0025, yMpu - Y_PLACA, 0.0203], preto, [px(0.235) + 0.0065, Y_PLACA + (yMpu - Y_PLACA) / 2, pz(0.505)]);
-  p.adesivo(raiz, "caixaMonitoramento_mpu6050", [0.021, 0.016], [px(0.235), yMpu + 0.00081, pz(0.505)], desenharMpu6050);
+  const yMpu = MPU.y;
+  p.bloco(raiz, [0.016, 0.0016, 0.021], azul, [px(MPU.u), yMpu, pz(MPU.v)]);
+  p.bloco(raiz, [0.0025, yMpu - Y_PLACA, 0.0203], preto, [px(MPU.u) + 0.0065, Y_PLACA + (yMpu - Y_PLACA) / 2, pz(MPU.v)]);
+  p.adesivo(raiz, "caixaMonitoramento_mpu6050", [0.021, 0.016], [px(MPU.u), yMpu + 0.00081, pz(MPU.v)], desenharMpu6050);
 
   // HW-550 (MAX6675) com o borne grande do termopar na ponta +Z
   const yHw = Y_PLACA + 0.0062;
@@ -629,6 +643,63 @@ function criarCaboLcd(scene, raiz, p) {
   return {
     atualizar(angulo) {
       fios.forEach((fio, i) => MeshBuilder.CreateTube(fio.name, { path: caminho(i, angulo), instance: fio }));
+    },
+  };
+}
+
+/**
+ * Etiqueta "Sensor de vibração" com o valor e o estado da medição, ligada por uma linha a um LED sobre o
+ * MPU-6050. Fica no grupo de desenho 3, por cima da caixa aberta (grupo 2), e sempre de frente para a câmera.
+ */
+function criarChamadaVibracao(scene, raiz) {
+  const no = new TransformNode("caixaMonitoramento_chamada", scene);
+  no.parent = raiz;
+  no.setEnabled(false);
+  const g = GRANDEZA_POR_ID.vibracao;
+  const largura = 0.075;
+  const ponta = new Vector3(px(MPU.u), MPU.y + 0.002, pz(MPU.v));
+
+  // o billboard não gira a própria posição com o pai: ela vem de uma âncora (abaixo da caixa na tela, onde
+  // o X da caixa aponta para cima) e a etiqueta fica na origem dela
+  const ancora = new TransformNode("caixaMonitoramento_ancoraEtiqueta", scene);
+  ancora.parent = no;
+  ancora.position.set(-W / 2 - 0.024, H, 0.03);
+  const etiqueta = MeshBuilder.CreatePlane("caixaMonitoramento_etiquetaVibracao", { width: largura, height: (largura * 120) / 320 }, scene);
+  etiqueta.billboardMode = Mesh.BILLBOARDMODE_ALL;
+  const tex = new DynamicTexture("tex_caixaMonitoramento_etiquetaVibracao", { width: 320, height: 120 }, scene, true);
+  tex.hasAlpha = true;
+  const matEtiqueta = new StandardMaterial("mat_caixaMonitoramento_etiquetaVibracao", scene);
+  matEtiqueta.diffuseTexture = tex;
+  matEtiqueta.emissiveTexture = tex;
+  matEtiqueta.useAlphaFromDiffuseTexture = true;
+  matEtiqueta.disableLighting = true;
+  matEtiqueta.backFaceCulling = false;
+  etiqueta.material = matEtiqueta;
+
+  const matLed = new StandardMaterial("mat_caixaMonitoramento_ledVibracao", scene);
+  matLed.disableLighting = true;
+  const led = MeshBuilder.CreateSphere("caixaMonitoramento_ledVibracao", { diameter: 0.004, segments: 8 }, scene);
+  led.material = matLed;
+  led.position.copyFrom(ponta);
+  // do centro da etiqueta (ela cobre o pedaço de dentro) até o LED
+  const linha = MeshBuilder.CreateLines("caixaMonitoramento_linhaVibracao", { points: [ancora.position.clone(), ponta] }, scene);
+  linha.color = new Color3(0.85, 0.9, 0.95);
+  for (const m of [linha, led, etiqueta]) {
+    m.parent = m === etiqueta ? ancora : no;
+    m.renderingGroupId = 3;
+    m.isPickable = false;
+  }
+
+  let anterior = "";
+  return {
+    raiz: no,
+    atualizar(estado, tv) {
+      const chave = `${estado.id}|${tv.valor}|${tv.unidade}`;
+      if (chave === anterior) return;
+      anterior = chave;
+      matLed.emissiveColor = Color3.FromHexString(estado.cor);
+      desenharEtiqueta(tex.getContext(), g, estado, tv);
+      tex.update();
     },
   };
 }
