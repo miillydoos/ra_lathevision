@@ -951,3 +951,43 @@ body.tour-360-ativo #cartao-info { display: none !important; }
 @media (prefers-reduced-motion: reduce) {
   .tour-pino.atual { animation: none; }
 }
+
+/* =====================================================================
+   Caixa do sistema de monitoramento (src/cena/caixaMonitoramento.js):
+   legenda no topo enquanto a caixa está aberta na frente da tela
+   ===================================================================== */
+.legenda-caixa {
+  position: fixed;
+  top: 76px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  width: min(460px, calc(100vw - 20px));
+  padding: 10px 14px;
+  animation: legenda-caixa-entra 0.35s ease-out;
+}
+.legenda-caixa header { display: flex; align-items: start; justify-content: space-between; gap: 8px; }
+.legenda-caixa h3 { margin: 0 0 4px; font-size: 15px; }
+.legenda-caixa p { margin: 0 0 6px; color: #d7dee6; line-height: 1.45; }
+.legenda-caixa p.sutil { margin: 0; color: var(--texto-sutil); }
+.legenda-caixa .fechar {
+  display: inline-flex;
+  background: none;
+  border: 0;
+  color: var(--texto-sutil);
+  cursor: pointer;
+  padding: 2px;
+}
+.legenda-caixa .fechar:hover { color: var(--texto); }
+@keyframes legenda-caixa-entra {
+  from { opacity: 0; transform: translate(-50%, -8px); }
+}
+
+@media (max-width: 900px) {
+  .legenda-caixa { top: calc(var(--altura-topo) + 12px + env(safe-area-inset-top, 0px)); }
+  .legenda-caixa .fechar { width: 40px; height: 40px; align-items: center; justify-content: center; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .legenda-caixa { animation: none; }
+}

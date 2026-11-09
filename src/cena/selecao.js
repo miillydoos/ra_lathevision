@@ -93,6 +93,7 @@ export function criarSelecao(scene, modelo) {
 
   function definirHover(c, evento) {
     if (c === hover) return;
+    pintar(hover, null); // dicas de elementos extras (fora de `componentes`) também apagam o destaque
     hover = c;
     atualizarDestaques();
     eventos.emitir("hover", c, evento);

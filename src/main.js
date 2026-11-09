@@ -7,6 +7,7 @@ import { criarPontosSensores } from "./cena/pontosSensores.js";
 import { criarAnimacaoPlaca } from "./cena/placa.js";
 import { criarSala } from "./cena/sala.js";
 import { criarCompartimentos, removerReservatorioQuadrado, separarTampas } from "./cena/compartimentos.js";
+import { criarCaixaMonitoramento } from "./cena/caixaMonitoramento.js";
 import { sincronizarCena } from "./cena/sincronizarCena.js";
 import { iniciarXR } from "./xr/xr.js";
 import { criarPainelXR } from "./xr/painelXR.js";
@@ -83,6 +84,8 @@ async function iniciar() {
     focar,
     aoAbrirGrandeza: (id) => abrirGrandeza(id, { focarCamera: false }),
   });
+  // caixa do sistema de monitoramento no tampo do cabeçote: clicar traz para a frente da tela, aberta
+  const caixa = criarCaixaMonitoramento({ scene, camera, selecao, fluxo, config });
 
   // ---------- RV / RA
   const xr = await iniciarXR(scene, { piso, ceu, posicaoOperador: CONFIG_CENA.posicaoOperador });
@@ -207,15 +210,18 @@ async function iniciar() {
     aoMostrarSensores: () => compartimentos.abrir(),
   });
   xr.on("estado", (emXR) => emXR && tour.fechar());
+  xr.on("estado", () => caixa.fechar({ imediato: true })); // volta ao torno ao entrar ou sair do headset
   compartimentos.on("estado", (aberto) => aberto && tour.pararGiro()); // o giro 360° tiraria a câmera das tampas
+  caixa.on("estado", (aberta) => aberta && tour.pararGiro());
 
   // Compila os shaders antes de revelar a cena (evita peças surgindo aos poucos).
   await scene.whenReadyAsync();
   concluirCarregamento();
   if (parametros.has("tour")) tour.abrir();
 
-  // parâmetros de teste: ?selecionar=cabecote&grandeza=temperatura&vista=comparar&camera=...&painelxr
+  // parâmetros de teste: ?selecionar=cabecote&grandeza=temperatura&vista=comparar&camera=...&painelxr&caixa
   if (parametros.has("selecionar")) selecao.selecionar(parametros.get("selecionar"));
+  if (parametros.has("caixa")) caixa.abrir();
   if (parametros.has("grandeza")) abrirGrandeza(parametros.get("grandeza"), { focarCamera: false });
   if (parametros.has("vista")) sensoresUI.definirVista(parametros.get("vista"));
   if (parametros.has("camera")) {
@@ -248,6 +254,7 @@ async function iniciar() {
     sala,
     tour,
     compartimentos,
+    caixa,
     vistaInicial,
     moverRotulo: (id, x, y, z) => pontos.mover(id, x, y, z),
   });
