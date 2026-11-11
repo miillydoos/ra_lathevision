@@ -3,6 +3,11 @@
   "maquina": "Torno ROMI T 350 — Laboratório de Usinagem",
   "leituraVelhaS": 10,
   "janelaGraficoS": 120,
+  "conexao": "websocket",
+  "websocket": {
+    "ip": "",
+    "porta": 81
+  },
   "mqtt": {
     "url": "wss://public.cloud.shiftr.io",
     "topicoBase": "tormax30/senai/torno01",

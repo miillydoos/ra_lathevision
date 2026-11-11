@@ -1,9 +1,14 @@
-// Exemplo de firmware: ESP32 publicando as cinco grandezas do torno via MQTT.
-// Bibliotecas (Gerenciador de Bibliotecas da Arduino IDE): PubSubClient, OneWire, DallasTemperature.
+// Exemplo de firmware: ESP32 como servidor WebSocket enviando as cinco grandezas do torno, sem broker.
+// O app conecta direto no IP do ESP32: ⚙ Configurações → "WebSocket direto no ESP32" → IP e porta 81.
+// Bibliotecas (Gerenciador de Bibliotecas da Arduino IDE): WebSockets (Markus Sattler), OneWire, DallasTemperature.
 //
-// Publica a cada 500 ms em <TOPICO_BASE>/leituras:
-//   {"ts":1760000000000,"temperatura":41.2,"oleo":78,"corrente":12.4,"vibracao":1.15,"rotacao":800}
-// e mantém <TOPICO_BASE>/status = "online" (Last Will "offline").
+// Envia a cada 500 ms, para todos os navegadores conectados:
+//   {"temperatura":41.2,"oleo":78.0,"corrente":12.40,"vibracao":1.15,"rotacao":800}
+// Sem campo "ts": o app usa a hora de chegada (na rede local o atraso é desprezível).
+//
+// O IP aparece no Monitor Serial (115200 baud) ao conectar no Wi-Fi. Para ele não mudar entre uma aula e outra,
+// ligue IP_FIXO (escolha um endereço livre da faixa da rede) ou reserve o IP do ESP32 no roteador.
+// Sem o ESP32 em mãos, "npm run esp32-falso" simula este firmware no computador.
 //
 // ATENÇÃO: as funções marcadas com "ADAPTE" dependem do sensor escolhido e da instalação.
 // Instrumentar uma máquina exige avaliação de segurança (NR-10 / NR-12): use transformador de
@@ -11,21 +16,20 @@
 // não interfira nos dispositivos de segurança da máquina.
 
 #include <WiFi.h>
-#include <PubSubClient.h>
+#include <WebSocketsServer.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
-#include <time.h>
 
-// ---------- rede e broker
+// ---------- rede
 const char* WIFI_SSID = "WIFI_IOT_CFP601";
 const char* WIFI_SENHA = "iot@senai601";
-// Broker público (shiftr.io, usuário/senha "public"): qualquer pessoa pode ler e publicar nestes tópicos — use só para
-// dados didáticos. Para broker local, troque pelo IP do computador (npm run broker ou Mosquitto).
-const char* BROKER = "public.cloud.shiftr.io";
-const uint16_t PORTA = 1883;
-const char* MQTT_USUARIO = "public";  // deixe "" em broker sem autenticação
-const char* MQTT_SENHA = "public";
-const char* TOPICO_BASE = "tormax30/senai/torno01";  // deve ser igual ao "Tópico base" do app
+const uint16_t PORTA_WS = 81;  // deve ser igual à "Porta" do app
+
+// IP fixo (opcional). Com false, o roteador escolhe o IP (DHCP) e ele aparece no Monitor Serial.
+const bool IP_FIXO = false;
+IPAddress IP_ESP32(192, 168, 0, 50);  // ADAPTE à faixa da sua rede
+IPAddress GATEWAY(192, 168, 0, 1);    // IP do roteador
+IPAddress MASCARA(255, 255, 255, 0);
 
 // ---------- pinos para ESP32-C3 Mini (ADAPTE). No C3 só GPIO0–4 têm ADC1; evite GPIO2, 8 e 9 (boot).
 const int PINO_DS18B20 = 5;        // temperatura da carcaça do cabeçote
@@ -34,8 +38,7 @@ const int PINO_CORRENTE = 1;       // saída do condicionador do TC (ex.: SCT-01
 const int PINO_VIBRACAO = 3;       // transmissor de vibração com saída proporcional a mm/s RMS
 const int PINO_PULSO_ROTACAO = 4;  // sensor indutivo/hall: 1 pulso por volta do eixo-árvore
 
-WiFiClient wifi;
-PubSubClient mqtt(wifi);
+WebSocketsServer servidor(PORTA_WS);
 OneWire barramento(PINO_DS18B20);
 DallasTemperature termometro(&barramento);
 
@@ -62,7 +65,7 @@ float lerCorrente() {
   // RMS em janela de ~100 ms (6 ciclos de 60 Hz). Ganho depende do TC e do resistor de carga.
   const float ganho = 0.0123;  // A por unidade de ADC (ADAPTE na calibração com alicate amperímetro)
   const int amostras = 1000;
-  double soma = 0, media = 0;
+  double soma = 0;
   static float offset = 2048;
   uint32_t inicio = micros();
   for (int i = 0; i < amostras; i++) {
@@ -94,28 +97,26 @@ float lerRotacao(uint32_t intervaloMs) {
 // ---------- conexão
 void conectarWifi() {
   WiFi.mode(WIFI_STA);
+  if (IP_FIXO && !WiFi.config(IP_ESP32, GATEWAY, MASCARA)) Serial.println("Falha ao aplicar o IP fixo; usando DHCP");
   WiFi.begin(WIFI_SSID, WIFI_SENHA);
-  while (WiFi.status() != WL_CONNECTED) delay(300);
-  configTime(-3 * 3600, 0, "pool.ntp.org");  // horário para o campo "ts"
-}
-
-void conectarMqtt() {
-  String status = String(TOPICO_BASE) + "/status";
-  while (!mqtt.connected()) {
-    String id = "esp32-torno-" + String((uint32_t)ESP.getEfuseMac(), HEX);
-    if (mqtt.connect(id.c_str(), MQTT_USUARIO, MQTT_SENHA, status.c_str(), 1, true, "offline")) {
-      mqtt.publish(status.c_str(), "online", true);
-    } else {
-      delay(2000);
-    }
+  Serial.print("Conectando ao Wi-Fi");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(300);
+    Serial.print(".");
   }
+  Serial.println();
+  Serial.print("Conectado. No app, use o IP ");
+  Serial.print(WiFi.localIP());
+  Serial.print(" e a porta ");
+  Serial.println(PORTA_WS);
 }
 
-uint64_t agoraMs() {
-  struct timeval tv;
-  gettimeofday(&tv, nullptr);
-  if (tv.tv_sec < 1700000000) return 0;  // NTP ainda não sincronizou: o app usa a hora de chegada
-  return (uint64_t)tv.tv_sec * 1000ULL + tv.tv_usec / 1000;
+void aoEventoWebSocket(uint8_t cliente, WStype_t tipo, uint8_t* dados, size_t tamanho) {
+  if (tipo == WStype_CONNECTED) {
+    Serial.printf("+ navegador %u conectado (%s)\n", cliente, servidor.remoteIP(cliente).toString().c_str());
+  } else if (tipo == WStype_DISCONNECTED) {
+    Serial.printf("- navegador %u desconectado\n", cliente);
+  }
 }
 
 void setup() {
@@ -128,14 +129,14 @@ void setup() {
   termometro.setWaitForConversion(false);  // não bloqueia o laço de 500 ms
   termometro.requestTemperatures();
   conectarWifi();
-  mqtt.setServer(BROKER, PORTA);
-  mqtt.setBufferSize(512);
+  servidor.begin();
+  servidor.onEvent(aoEventoWebSocket);
+  servidor.enableHeartbeat(15000, 3000, 2);  // derruba navegadores que sumiram sem fechar a conexão
 }
 
 void loop() {
   if (WiFi.status() != WL_CONNECTED) conectarWifi();
-  if (!mqtt.connected()) conectarMqtt();
-  mqtt.loop();
+  servidor.loop();
 
   static uint32_t ultimo = millis();
   uint32_t agora = millis();
@@ -143,16 +144,10 @@ void loop() {
   uint32_t intervalo = agora - ultimo;
   ultimo = agora;
 
-  char msg[256];
-  char ts[24];
-  uint64_t t = agoraMs();
-  if (t) snprintf(ts, sizeof ts, "\"ts\":%llu,", t);
-  else ts[0] = 0;
+  char msg[200];
   float temp = lerTemperatura();
-  snprintf(msg, sizeof msg,
-           "{%s\"temperatura\":%s,\"oleo\":%.1f,\"corrente\":%.2f,\"vibracao\":%.2f,\"rotacao\":%.0f}",
-           ts, isnan(temp) ? "null" : String(temp, 1).c_str(), lerNivelOleo(), lerCorrente(), lerVibracao(),
+  snprintf(msg, sizeof msg, "{\"temperatura\":%s,\"oleo\":%.1f,\"corrente\":%.2f,\"vibracao\":%.2f,\"rotacao\":%.0f}",
+           isnan(temp) ? "null" : String(temp, 1).c_str(), lerNivelOleo(), lerCorrente(), lerVibracao(),
            lerRotacao(intervalo));
-  String topico = String(TOPICO_BASE) + "/leituras";
-  mqtt.publish(topico.c_str(), msg);
+  servidor.broadcastTXT(msg);
 }

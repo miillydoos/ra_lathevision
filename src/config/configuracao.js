@@ -5,6 +5,9 @@ const PADRAO = {
   maquina: "Torno ROMI T 350",
   leituraVelhaS: 10,
   janelaGraficoS: 120,
+  // "websocket": o app conecta direto no IP do ESP32 (rede local) · "mqtt": passa por um broker
+  conexao: "websocket",
+  websocket: { ip: "", porta: 81 },
   mqtt: { url: "wss://public.cloud.shiftr.io", topicoBase: "tormax30/senai/torno01", usuario: "public", senha: "public" },
   grandezas: {
     temperatura: { sentido: "acima", atencao: 50, alarme: 60, escala: [15, 80] },
@@ -16,6 +19,21 @@ const PADRAO = {
 };
 
 const CHAVE_LOCAL = "lab-torno:config";
+
+export const tipoConexao = (config) => (config.conexao === "mqtt" ? "mqtt" : "websocket");
+
+/**
+ * Endereço do servidor WebSocket do ESP32 a partir do que foi digitado:
+ * "192.168.0.50" → ws://192.168.0.50:81/ · "192.168.0.50:8080" → ws://192.168.0.50:8080/ · "ws://…" fica como está.
+ */
+export function enderecoWebSocket({ ip, porta } = {}) {
+  const texto = String(ip ?? "").trim();
+  if (!texto) return "";
+  if (/^wss?:\/\//i.test(texto)) return texto;
+  const [host, ...caminho] = texto.replace(/^https?:\/\//i, "").split("/");
+  const comPorta = /:\d+$/.test(host) ? host : `${host}:${Number(porta) || 81}`;
+  return `ws://${comPorta}/${caminho.join("/")}`;
+}
 
 function mesclar(base, extra) {
   if (!extra || typeof extra !== "object" || Array.isArray(extra)) return extra ?? base;

@@ -18,7 +18,8 @@ import { criarFonteSimulada } from "./fontes/fonteSimulada.js";
 import { criarComponentesUI } from "./ui/componentesUI.js";
 import { criarSensoresUI } from "./ui/sensoresUI.js";
 import { criarConexaoUI } from "./ui/conexaoUI.js";
-import { criarFonteMQTT } from "./fontes/fonteMQTT.js";
+import { criarFonteAoVivo } from "./fontes/fonteAoVivo.js";
+import { tipoConexao } from "./config/configuracao.js";
 import { criarModos } from "./modos.js";
 import { criarPainelSimulacao } from "./ui/painelSimulacao.js";
 import { criarPainelAoVivo } from "./ui/painelAoVivo.js";
@@ -112,7 +113,7 @@ async function iniciar() {
   // ---------- modos e fontes de dados
   const modos = criarModos({ fluxo, sensoresUI, painelXR });
 
-  const aoVivo = criarFonteMQTT({ config });
+  const aoVivo = criarFonteAoVivo({ config });
   const configuracoes = criarConfiguracoesUI({
     config,
     aoSalvar: () => {
@@ -130,10 +131,13 @@ async function iniciar() {
   modos.registrar({
     id: "aoVivo",
     nome: "Ao vivo",
-    dica: "Acompanha o torno real pelos sensores (ESP32 → MQTT)",
+    dica: "Acompanha o torno real pelos sensores (ESP32 → WebSocket pelo IP, ou broker MQTT)",
     fonte: aoVivo,
     painel: painelAoVivo.el,
-    info: () => `Torno real · ${config.mqtt?.topicoBase ?? ""}`,
+    info: () =>
+      tipoConexao(config) === "mqtt"
+        ? `Torno real · ${config.mqtt?.topicoBase ?? ""}`
+        : `Torno real · ESP32 ${config.websocket?.ip || "(sem IP)"}`,
   });
 
   const gravador = criarGravador({ fluxo, config });

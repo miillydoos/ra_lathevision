@@ -1,3 +1,5 @@
+import { enderecoWebSocket, tipoConexao } from "../config/configuracao.js";
+
 const escapar = (s) =>
   String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
@@ -26,7 +28,11 @@ export function criarPainelAoVivo({ config, fluxo, aoConfigurar, aoReconectar })
   function atualizar() {
     const m = config.mqtt ?? {};
     const c = fluxo.conexao;
-    detalhe.innerHTML = `Broker <code>${escapar(m.url || "não configurado")}</code> · tópicos <code>${escapar(m.topicoBase || "?")}/#</code>${
+    const origem =
+      tipoConexao(config) === "mqtt"
+        ? `Broker <code>${escapar(m.url || "não configurado")}</code> · tópicos <code>${escapar(m.topicoBase || "?")}/#</code>`
+        : `ESP32 <code>${escapar(enderecoWebSocket(config.websocket) || "IP não configurado")}</code>`;
+    detalhe.innerHTML = `${origem}${
       c.detalhe && c.estado === "erro" ? ` · <span class="erro">${escapar(c.detalhe)}</span>` : ""
     }`;
   }

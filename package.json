@@ -11,6 +11,7 @@
     "preview": "vite preview --host",
     "broker": "node ferramentas/broker-local.mjs",
     "publicador": "node ferramentas/publicador-teste.mjs",
+    "esp32-falso": "node ferramentas/esp32-falso.mjs",
     "sessoes": "node ferramentas/gerar-sessoes.mjs"
   },
   "dependencies": {

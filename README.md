@@ -7,7 +7,7 @@ Reúne os projetos 1, 2 e 4 da proposta em quatro modos:
 
 | Modo | Para que serve |
 |---|---|
-| **Ao vivo** | Acompanha o torno real (ESP32 → broker MQTT → app), mostra a idade da última leitura e grava a sessão. |
+| **Ao vivo** | Acompanha o torno real (ESP32 → WebSocket pelo IP, ou broker MQTT → app), mostra a idade da última leitura e grava a sessão. |
 | **Simulação** | Funciona sem sensores. O professor controla a operação (ciclo típico ou manual), aplica situações, simula falha de sensor e acelera o tempo. |
 | **Replay** | Reproduz uma sessão gravada: pausar, voltar, ir a um instante clicando no gráfico, marcar instantes e comparar curvas. |
 | **Desafio** | O professor escolhe ou sorteia uma situação oculta; a turma registra evidências (também no headset), responde e recebe a avaliação. |
@@ -35,11 +35,36 @@ npm run dev          # http://localhost:5173
 |---|---|---|
 | 1. Base 3D | GLB carregado (15 conjuntos, pivôs originais), identificação de componentes por clique/lista, pontos instrumentados com rótulos, visor de óleo virtual, placa girando, RV/RA com painel 3D. Malhas mescladas por componente e material (547 → 114) para o headset. | `src/cena/*`, `src/xr/*`, `src/config/componentes.js`, `src/config/grandezas.js` |
 | 2. Indicadores | Estados Normal / Atenção / Alarme / Sem dados (cor + ícone + texto), cartões com minigráfico, detalhe com limites, estatísticas, cuidados de interpretação e tabela; comparação em pequenos múltiplos; indicador de conexão. | `src/dados/fluxo.js`, `src/ui/sensoresUI.js`, `src/ui/graficos.js`, `public/config.json` |
-| 3. Fontes de dados | MQTT sobre WebSocket, modelo de simulação, painel do professor, configurações (broker, limites, tipo de sensor de nível). | `src/fontes/*`, `src/simulacao/*`, `src/ui/painelSimulacao.js`, `src/ui/configuracoesUI.js` |
+| 3. Fontes de dados | WebSocket direto no IP do ESP32 ou MQTT sobre WebSocket, modelo de simulação, painel do professor, configurações (broker, limites, tipo de sensor de nível). | `src/fontes/*`, `src/simulacao/*`, `src/ui/painelSimulacao.js`, `src/ui/configuracoesUI.js` |
 | 4. Registro e replay | Gravação de sessões (IndexedDB + download .json), quatro sessões de exemplo, reprodução sincronizada com o modelo, marcadores do aluno. | `src/dados/gravador.js`, `src/fontes/fonteReplay.js`, `src/ui/painelReplay.js`, `public/sessoes/` |
 | 5. Desafios | Aquecimento, nível baixo de óleo e vibração elevada, com situação oculta, registro de evidências, resposta, avaliação por critérios e relatório. | `src/config/desafios.js`, `src/ui/painelDesafio.js` |
 
 ## Conexão ao vivo
+
+Em ⚙ **Configurações → Conexão ao vivo** escolha um dos dois caminhos.
+
+### WebSocket direto no ESP32 (padrão)
+
+```
+ESP32 (servidor WebSocket, porta 81) ──ws://<ip-do-esp32>:81──▶ aplicação
+```
+
+Sem broker: o app conecta no **IP do ESP32**. Firmware em `exemplos/esp32/torno_monitor_websocket/`
+(biblioteca **WebSockets**, de Markus Sattler). Ao ligar, o ESP32 mostra o IP no Monitor Serial (115200); digite esse
+IP em Configurações (porta 81). Para o IP não mudar, ligue `IP_FIXO` no firmware ou reserve o endereço no roteador.
+
+A cada 500 ms o ESP32 envia um JSON com as grandezas: `{"temperatura": 41.2, "oleo": 78, "corrente": 12.4, "vibracao": 1.15, "rotacao": 800}`
+(`ts` opcional, como no MQTT).
+
+- O computador, celular ou headset precisa estar **na mesma rede Wi-Fi** do ESP32.
+- Abra o app por **`http://`** (`npm run dev` → `http://<ip-do-computador>:5173`). Em páginas HTTPS (GitHub Pages,
+  `npm run dev:https`) o navegador bloqueia `ws://`; para RV/RA no headset, que exige HTTPS, use o caminho MQTT com `wss://`.
+- No campo IP também valem `192.168.0.50:8080` (outra porta) ou um endereço completo `ws://…`.
+
+Para testar sem hardware: `npm run esp32-falso -- --cenario vibracao --apos 30` (faz o papel do ESP32 com o modelo da
+simulação) e use o IP `localhost`, porta 81.
+
+### Broker MQTT
 
 ```
 ESP32 ──MQTT/TCP 1883──▶ broker ──MQTT/WebSocket 9001──▶ aplicação
@@ -62,7 +87,7 @@ npm run broker                                    # broker local: TCP 1883 + Web
 npm run publicador -- --cenario vibracao --apos 30   # faz o papel do ESP32 (usa o modelo da simulação)
 ```
 
-Depois, no app: **Ao vivo** → endereço `ws://localhost:9001` (padrão). Para outro broker use ⚙ **Configurações**.
+Depois, em ⚙ **Configurações**: **Broker MQTT** → endereço `ws://localhost:9001`.
 Há um exemplo de firmware em `exemplos/esp32/torno_monitor/` e de configuração do Mosquitto em `exemplos/mosquitto.conf`.
 Em páginas HTTPS o navegador só aceita `wss://`.
 

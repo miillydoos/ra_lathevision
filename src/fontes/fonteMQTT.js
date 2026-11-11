@@ -1,7 +1,4 @@
-import { GRANDEZAS } from "../config/grandezas.js";
-
-const IDS = new Set(GRANDEZAS.map((g) => g.id));
-const TOLERANCIA_RELOGIO_MS = 60_000;
+import { IDS_GRANDEZAS as IDS, criarLeitor } from "./leituras.js";
 
 /**
  * Fonte "Ao vivo": ESP32 → broker MQTT → esta aplicação (MQTT sobre WebSocket).
@@ -14,8 +11,7 @@ const TOLERANCIA_RELOGIO_MS = 60_000;
  *   <base>/status
  *       "online" / "offline" (use como Last Will no ESP32)
  *
- * "ts" é opcional (época em ms ou texto ISO). Se o relógio do dispositivo estiver muito
- * diferente do navegador (ESP32 sem NTP), vale a hora de chegada da mensagem.
+ * "ts" é opcional (ver leituras.js).
  */
 export function criarFonteMQTT({ config }) {
   let cliente = null;
@@ -23,20 +19,7 @@ export function criarFonteMQTT({ config }) {
   let statusDispositivo = null;
   const opcoes = () => config.mqtt ?? {};
 
-  function instante(ts) {
-    const agora = Date.now();
-    if (ts === undefined || ts === null) return agora;
-    const t = typeof ts === "string" ? Date.parse(ts) : Number(ts) < 1e11 ? Number(ts) * 1000 : Number(ts);
-    return Number.isFinite(t) && Math.abs(t - agora) < TOLERANCIA_RELOGIO_MS ? t : agora;
-  }
-
-  function lerValor(id, bruto) {
-    if (id === "oleo" && config.grandezas.oleo?.sensor === "boia") {
-      if (typeof bruto === "string") return /^(ok|alto|normal|1|true)$/i.test(bruto.trim()) ? 1 : 0;
-      return Number(bruto) >= 0.5 ? 1 : 0;
-    }
-    return Number(bruto);
-  }
+  const { instante, lerValor, publicarLeituras } = criarLeitor(config);
 
   function aoMensagem(topico, mensagem) {
     const base = (opcoes().topicoBase ?? "").replace(/\/+$/, "");
@@ -58,8 +41,7 @@ export function criarFonteMQTT({ config }) {
     }
 
     if (sufixo === "leituras" && dados && typeof dados === "object") {
-      const t = instante(dados.ts);
-      for (const [id, v] of Object.entries(dados)) if (IDS.has(id)) fluxo.publicar(id, lerValor(id, v), t);
+      publicarLeituras(fluxo, dados);
       return;
     }
     if (IDS.has(sufixo)) {

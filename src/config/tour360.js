@@ -180,11 +180,11 @@ export const PARADAS_360 = [
     medicoes: ["temperatura", "oleo", "corrente", "vibracao", "rotacao"],
     sensoresInternos: true,
     descricao:
-      "O sensor de corrente fica no painel elétrico; os de temperatura, vibração, nível de óleo e rotação, na caixa lateral de engrenagens. As leituras chegam por um ESP32 e um broker MQTT e aparecem como Normal, Atenção, Alarme ou Sem dados. Sem sensores, a Simulação reproduz a operação.",
+      "O sensor de corrente fica no painel elétrico; os de temperatura, vibração, nível de óleo e rotação, na caixa lateral de engrenagens. As leituras chegam de um ESP32 pela rede Wi-Fi (WebSocket direto no IP dele ou broker MQTT) e aparecem como Normal, Atenção, Alarme ou Sem dados. Sem sensores, a Simulação reproduz a operação.",
     fatos: [
       ["Painel elétrico", "Corrente"],
       ["Caixa de engrenagens", "Temperatura, vibração, óleo e rotação"],
-      ["Comunicação", "ESP32 → MQTT (WebSocket)"],
+      ["Comunicação", "ESP32 → WebSocket (IP) ou MQTT"],
       ["Modos", "Ao vivo, Simulação, Replay e Desafio"],
     ],
   },
