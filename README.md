@@ -142,7 +142,11 @@ abrir as medições.
   cabo do motor; na caixa, temperatura, vibração, nível de óleo e rotação, cada um com LED e etiqueta na cor do estado
   (clicar abre a medição). Tampas e interiores (fundição, polia, trem de engrenagens, placa guardada; disjuntores,
   contatores, borneira, canaletas e fiação) estão no `torno.glb`, modelados a partir das fotos em `public/fotos/`; as
-  tampas giram em tempo de execução (o arquivo não muda). Posições dos sensores e das dobradiças em
+  tampas giram em tempo de execução (o arquivo não muda). Os cabos dos sensores correm por canaletas e prensa-cabos:
+  no painel, o cabo do motor entra pelo piso e as três fases sobem até a borneira (a preta pelo SCT-013), e o cabo do
+  sensor desce pela canaleta do canto e atravessa a parede até a caixa de engrenagens; lá, todos sobem até a canaleta
+  do alto e saem pelo prensa-cabo do tampo, num eletroduto corrugado, até a caixa do sistema de monitoramento (no
+  tampo do cabeçote, do lado do operador). Posições dos sensores, das dobradiças e dos cabos em
   `src/cena/compartimentos.js`.
 
 ## Ajustes finos pelo console

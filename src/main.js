@@ -219,9 +219,10 @@ async function iniciar() {
   concluirCarregamento();
   if (parametros.has("tour")) tour.abrir();
 
-  // parâmetros de teste: ?selecionar=cabecote&grandeza=temperatura&vista=comparar&camera=...&painelxr&caixa
+  // parâmetros de teste: ?selecionar=cabecote&grandeza=temperatura&vista=comparar&camera=...&painelxr&caixa&sensores
   if (parametros.has("selecionar")) selecao.selecionar(parametros.get("selecionar"));
   if (parametros.has("caixa")) caixa.abrir();
+  if (parametros.has("sensores")) compartimentos.abrir({ focarCamera: false });
   if (parametros.has("grandeza")) abrirGrandeza(parametros.get("grandeza"), { focarCamera: false });
   if (parametros.has("vista")) sensoresUI.definirVista(parametros.get("vista"));
   if (parametros.has("camera")) {

@@ -23,17 +23,22 @@ import { desenharEtiqueta } from "./compartimentos.js";
 import { svgIcone } from "../util/icones.js";
 import { criarEmissor } from "../util/emissor.js";
 
-// Caixa do sistema de monitoramento (SENAI São Carlos), apoiada no tampo do cabeçote, no canto do lado do
-// painel elétrico. Modelada a partir das fotos da caixa real: corpo cinza impresso em 3D, tampa prateada com
-// os dizeres em baixo-relevo e o LCD 16×2 (que mostra as leituras); dentro, a placa com o ESP32-C3 Super Mini,
-// o MPU-6050, o módulo de termopar HW-550 (MAX6675), dois optoacopladores, os bornes e os cabos.
+// Caixa do sistema de monitoramento (SENAI São Carlos), apoiada no tampo do cabeçote, na frente (lado do
+// operador, acima do painel de comandos). Modelada a partir das fotos da caixa real: corpo cinza impresso em
+// 3D, tampa prateada com os dizeres em baixo-relevo e o LCD 16×2 (que mostra as leituras); dentro, a placa com
+// o ESP32-C3 Super Mini, o MPU-6050, o módulo de termopar HW-550 (MAX6675), dois optoacopladores, os bornes e
+// os cabos. Os cabos chegam por um eletroduto corrugado curto até o prensa-cabo do tampo, logo acima da caixa
+// de engrenagens: de lá descem até a canaleta dos sensores (ver compartimentos.js).
 // Clicar nela traz a caixa para a frente da tela com a tampa aberta (virada para o lado, presa pelo cabo de
 // 4 vias do LCD); arrastar gira, a roda aproxima, e Esc, um clique fora ou outro clique nela a devolvem.
 // Coordenadas em metros; no local da caixa X = largura, Y = altura (tampa em +Y) e Z = comprimento.
-// Apoiada no torno, +Z do local coincide com +Z do mundo, e os dizeres ficam legíveis para quem olha do
-// lado do cabeçote (-X). Na frente da tela, Z vai para a direita e X para cima.
+// Apoiada no torno, a caixa fica girada `giro` em Y: +X do local aponta para -Z do mundo e +Z do local para
+// +X do mundo, e assim os dizeres ficam legíveis para o operador (em +Z, de frente para a máquina) e a entrada
+// dos cabos (-Z do local) fica do lado da caixa de engrenagens (-X). Na frente da tela, Z vai para a direita e
+// X para cima.
 export const CAIXA = {
-  posicao: [-1.3325, 1.328, -0.3825], // centro da base, no tampo do cabeçote (y = 1,328); canto -X / -Z
+  posicao: [-1.255, 1.328, 0.26], // centro da base, no tampo do cabeçote (y = 1,328); canto -X / +Z
+  giro: Math.PI / 2, // em torno de Y, apoiada no torno
   largura: 0.095,
   altura: 0.055,
   comprimento: 0.155,
@@ -54,7 +59,19 @@ const px = (u) => -W / 2 + E + u * (W - 2 * E);
 const pz = (v) => -L / 2 + E + v * (L - 2 * E);
 const Y_PLACA = E + 0.0018; // face de cima da placa branca
 const MPU = { u: 0.235, v: 0.505, y: Y_PLACA + 0.0085 }; // MPU-6050 (o sensor de vibração), sobre a barra de pinos
-const Z_PRENSA_CABO = -L / 2 - 0.0105; // prensa-cabo no tampo, atrás da parede -Z, alinhado com o furo dos cabos
+const X_FURO = px(0.41); // furo dos cabos na parede -Z (com prensa-cabo)
+const Y_FURO = 0.03;
+const Z_PRENSA_CABO = -L / 2 - 0.03; // prensa-cabo no tampo, atrás da parede -Z, alinhado com o furo dos cabos
+
+/**
+ * Centro do prensa-cabo do tampo do cabeçote, em coordenadas do mundo (na face do tampo). Por baixo dele, o
+ * feixe de cabos dos sensores sobe da canaleta da caixa de engrenagens.
+ */
+export const PRENSA_CABO_TAMPO = (() => {
+  const local = new Vector3(X_FURO, 0, Z_PRENSA_CABO);
+  const p = Vector3.TransformCoordinates(local, Matrix.RotationY(CAIXA.giro)).addInPlace(new Vector3(...CAIXA.posicao));
+  return [p.x, p.y, p.z];
+})();
 
 /**
  * Caixa clicável no tampo do cabeçote. Emite "estado" (aberta na frente da tela ou não).
@@ -79,15 +96,17 @@ export function criarCaixaMonitoramento({ scene, camera, selecao, fluxo, config 
   const cabo = criarCaboLcd(scene, raiz, pecas);
 
   raiz.position.set(...CAIXA.posicao);
-  raiz.rotationQuaternion = Quaternion.Identity();
+  raiz.rotationQuaternion = Quaternion.RotationAxis(Axis.Y, CAIXA.giro);
   const malhas = raiz.getChildMeshes(false);
   const chamada = criarChamadaVibracao(scene, raiz); // fora de `malhas`: não é clicável nem muda de grupo
 
-  // prensa-cabo no tampo do cabeçote, por onde os cabos descem até os sensores (fica no torno)
-  const [cx, cy, cz] = CAIXA.posicao;
+  // prensa-cabo no tampo do cabeçote, onde chega o eletroduto (fica no torno quando a caixa sai do lugar)
+  const base = new TransformNode("caixaMonitoramento_base", scene);
+  base.position.set(...CAIXA.posicao);
+  base.rotationQuaternion = raiz.rotationQuaternion.clone();
   const pretoPrensa = pecas.material("#1b1d20", { rugosidade: 0.45 });
-  pecas.cilindro(null, 0.016, 0.003, pretoPrensa, [cx + px(0.41), cy + 0.0015, cz + Z_PRENSA_CABO], "y", 6).isPickable = false;
-  pecas.cilindro(null, 0.0125, 0.0075, pretoPrensa, [cx + px(0.41), cy + 0.00375, cz + Z_PRENSA_CABO]).isPickable = false;
+  pecas.cilindro(base, 0.017, 0.003, pretoPrensa, [X_FURO, 0.0015, Z_PRENSA_CABO], "y", 6).isPickable = false;
+  pecas.cilindro(base, 0.0135, 0.0075, pretoPrensa, [X_FURO, 0.00375, Z_PRENSA_CABO]).isPickable = false;
 
   // luz só da caixa, vinda do lado de quem olha: acende enquanto ela está na frente da tela
   const luz = new HemisphericLight("luzCaixaMonitoramento", new Vector3(0, 1, 0), scene);
@@ -131,7 +150,7 @@ export function criarCaixaMonitoramento({ scene, camera, selecao, fluxo, config 
   let cameraSolta = false;
   const giro = [...CAIXA.giroInicial];
   let zoom = 1;
-  const repouso = { posicao: raiz.position.clone(), rotacao: Quaternion.Identity() };
+  const repouso = { posicao: raiz.position.clone(), rotacao: raiz.rotationQuaternion.clone() };
 
   const dica = {
     id: "caixaMonitoramento",
@@ -531,10 +550,32 @@ function montarCorpo(p, raiz) {
   for (const u of [0.565, 0.6, 0.635]) p.cilindro(raiz, 0.0022, 0.0062, bege, [px(u), Y_PLACA + 0.0013, pz(0.49)], "z", 12);
   p.cilindro(raiz, 0.0052, 0.0085, preto, [px(0.665), Y_PLACA + 0.0028, pz(0.5)], "z", 16);
 
-  // cabos que entram pelo furo da parede -Z: dois brancos (sensores) e um preto (alimentação)
-  const yFuro = 0.03;
-  // do prensa-cabo no tampo do cabeçote (atrás da caixa) sobe até o furo e entra
-  const entrada = (x) => [[x, -0.006, Z_PRENSA_CABO], [x, 0.007, Z_PRENSA_CABO + 0.001], [x, yFuro, -L / 2 - 0.004], [x, yFuro, -L / 2 + 0.006]];
+  // cabos que entram pelo prensa-cabo da parede -Z: dois brancos (sensores) e um preto (alimentação). Do lado
+  // de fora vão juntos num eletroduto corrugado preto, que faz a curva e desce até o prensa-cabo do tampo
+  const yFuro = Y_FURO;
+  p.cilindro(raiz, 0.018, 0.003, preto, [X_FURO, yFuro, -L / 2 - 0.0015], "z", 6); // porca de fora
+  p.cilindro(raiz, 0.0145, 0.007, preto, [X_FURO, yFuro, -L / 2 - 0.0065], "z", 20); // cúpula
+  p.cilindro(raiz, 0.018, 0.0025, preto, [X_FURO, yFuro, -L / 2 + E + 0.00125], "z", 6); // contraporca de dentro
+  const curva = Curve3.CreateCatmullRomSpline(
+    [
+      [X_FURO, yFuro, -L / 2 - 0.008],
+      [X_FURO, yFuro, -L / 2 - 0.013],
+      [X_FURO, yFuro - 0.007, Z_PRENSA_CABO + 0.006],
+      [X_FURO, 0.012, Z_PRENSA_CABO],
+      [X_FURO, 0.004, Z_PRENSA_CABO],
+    ].map((v) => new Vector3(...v)),
+    24,
+  ).getPoints();
+  const eletroduto = MeshBuilder.CreateTube(
+    "caixaMonitoramento_eletroduto",
+    // anéis do corrugado: o raio sobe e desce a cada 3 mm do caminho
+    { path: curva, radiusFunction: (_, d) => 0.0052 + 0.0007 * Math.abs(Math.sin((d * Math.PI) / 0.003)), tessellation: 14, cap: Mesh.CAP_ALL },
+    p.scene,
+  );
+  eletroduto.material = p.material("#24272b", { rugosidade: 0.55 });
+  eletroduto.parent = raiz;
+  // do lado de dentro, os cabos saem da contraporca e se abrem até os bornes
+  const entrada = (x) => [[x, yFuro, -L / 2 + E - 0.001], [x, yFuro, -L / 2 + E + 0.007]];
   // fios coloridos da ponta do cabo até a entrada de cada borne (chegando de frente, 4 mm antes)
   const condutores = (de, ate, sentido) =>
     ate.forEach((pt, i) => {
@@ -555,7 +596,7 @@ function montarCorpo(p, raiz) {
   condutores(fimC, alimentacao, "+z");
 
   // abraçadeira prendendo os três cabos logo depois da parede
-  p.bloco(raiz, [0.0125, 0.0058, 0.0022], caboPreto, [px(0.41), yFuro, -L / 2 + E + 0.003]);
+  p.bloco(raiz, [0.0125, 0.0058, 0.0022], caboPreto, [px(0.41), yFuro, -L / 2 + E + 0.0048]);
 }
 
 /** Tampa com LCD, filha da dobradiça (borda +X do topo). Devolve o LCD. */
