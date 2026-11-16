@@ -101,7 +101,10 @@ async function iniciar() {
     fluxo,
     config,
     aoSair: () => xr.sair(),
-    aoAlternarRotulos: (v) => compartimentos.mostrarEtiquetas(v),
+    aoAlternarRotulos: (v) => {
+      compartimentos.mostrarEtiquetas(v);
+      caixa.mostrarEtiqueta(v);
+    },
     aoSelecionarGrandeza: (id) => sensoresUI.abrir(id),
   });
   selecao.on("selecao", (c) => painelXR.definirComponente(c));

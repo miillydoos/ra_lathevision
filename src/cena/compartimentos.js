@@ -14,7 +14,8 @@ import {
 } from "@babylonjs/core";
 import { GRANDEZA_POR_ID } from "../config/grandezas.js";
 import { ESTADOS } from "../config/estados.js";
-import { desenharIcone, svgIcone } from "../util/icones.js";
+import { svgIcone } from "../util/icones.js";
+import { criarBalao } from "./baloes.js";
 import { textoValor } from "../ui/sensoresUI.js";
 import { criarEmissor } from "../util/emissor.js";
 import { PRENSA_CABO_TAMPO } from "./caixaMonitoramento.js"; // só usado em tempo de execução (importação circular)
@@ -22,10 +23,11 @@ import { PRENSA_CABO_TAMPO } from "./caixaMonitoramento.js"; // só usado em tem
 // Compartimentos com sensores: o sensor de corrente fica no painel elétrico (traseira do gabinete do cabeçote);
 // nível de óleo (ultrassônico) e rotação (sensor de velocidade) ficam na caixa lateral de engrenagens; o de
 // vibração (MPU-6050) fica na caixa de monitoramento, no tampo do cabeçote (caixaMonitoramento.js).
-// As etiquetas (balões) das medições ficam só nos sensores.
+// Os balões das medições ficam só nos sensores: vermelhos, grandes e sempre à mostra, mesmo com as tampas
+// fechadas (baloes.js).
 // As tampas são as do próprio torno.glb, giradas em dobradiças em tempo de execução (o arquivo não muda).
 // Coordenadas em metros, como no torno.glb; `dobradica` = eixo vertical (x, z); `sensores[].pos` = (z, y)
-// na face aberta e `etiqueta` = deslocamento (z, y) da etiqueta; `angulo` em graus (negativo abre para -X,
+// na face aberta e `etiqueta` = deslocamento (z, y) da borda do balão voltada para o sensor; `angulo` em graus (negativo abre para -X,
 // positivo para -Z). `giro` monta o interior girado em Y (face traseira: x local = z do mundo, z local = -x do
 // mundo); `vista` = câmera do botão Sensores, que vai ao compartimento do lado em que a câmera já está.
 // Olhando a lateral do cabeçote, -Z fica à esquerda (lado das dobradiças) e +Z à direita (lado do operador).
@@ -64,7 +66,7 @@ export const COMPARTIMENTOS = [
         tipo: "velocidade",
         nome: "Sensor de velocidade",
         pos: [0, 1.132],
-        etiqueta: [0.13, -0.06],
+        etiqueta: [0.15, 0.1],
         rota: [[-1.3405, 1.1912, 0.006], [-1.341, 1.1965, 0.0135], [-1.342, 1.215, 0.0145], [-1.344, 1.238, 0.0145], [-1.348, 1.258, 0.0145]],
       },
       // HC-SR04 na tampa do reservatório cilíndrico, transdutores voltados para baixo medindo a distância até
@@ -76,7 +78,7 @@ export const COMPARTIMENTOS = [
         nome: "Nível de óleo (ultrassom)",
         pos: [-0.165, 1.052],
         afastamento: 0.015,
-        etiqueta: [-0.07, -0.12],
+        etiqueta: [-0.1, -0.12],
         rota: [[-1.359, 1.069, -0.196], [-1.36, 1.0685, -0.218], [-1.362, 1.074, -0.238], [-1.362, 1.1, -0.245], [-1.361, 1.235, -0.245], [-1.356, 1.258, -0.245]],
       },
     ],
@@ -113,7 +115,7 @@ export const COMPARTIMENTOS = [
         tipo: "tc",
         nome: "Corrente (SCT-013)",
         pos: [1.178, 0.825],
-        etiqueta: [0, 0.075],
+        etiqueta: [0, 0.06],
         raioCabo: 0.0021,
         rota: [[-1.181, 0.818, -0.455], [-1.2, 0.806, -0.456], [-1.3, 0.79, -0.452], [-1.345, 0.783, -0.418], [-1.365, 0.778, -0.38], [-1.365, 0.784, -0.357], [-1.365, 0.81, -0.351]],
       },
@@ -128,8 +130,6 @@ export const COMPARTIMENTOS = [
     },
   },
 ];
-const LARGURA_ETIQUETA = 0.15; // m
-const ALTURA_ETIQUETA = 0.056;
 /** Antes de criarSelecao: tira de cena o reservatório quadrado (e o óleo dele) e a mangueira do torno.glb. */
 export function removerReservatorioQuadrado(modelo) {
   const quadrado = /^Cabecote_fixo_engrenagens_(reservatorio|oleo|mangueira)/;
@@ -295,7 +295,7 @@ export function criarCompartimentos({ scene, camera, selecao, tampas, fluxo, con
       s.atualizar(ESTADOS[e.estado] ?? ESTADOS.semDados, tv, e.valor);
     }
   }
-  setInterval(() => comps.some((c) => c.k > 0) && atualizarSensores(), 250);
+  setInterval(atualizarSensores, 250); // os balões aparecem sempre, mesmo com as tampas fechadas
 
   // ---------- abrir / fechar
   const algumaAberta = () => comps.some((c) => c.alvo === 1);
@@ -670,28 +670,21 @@ function criarSensor(scene, raiz, c, s) {
   const led = peca(MeshBuilder.CreateSphere(`ledSensor_${nome}`, { diameter: 0.009, segments: 8 }, scene), matLed);
   led.position.copyFrom(ponta);
 
-  // etiqueta (como os rótulos dos pontos instrumentados: sempre de frente para a câmera e por cima)
-  const etiqueta = MeshBuilder.CreatePlane(`etiquetaSensor_${nome}`, { width: LARGURA_ETIQUETA, height: ALTURA_ETIQUETA }, scene);
-  etiqueta.parent = raiz;
+  // balão com o valor (baloes.js): fica fora da tampa e aparece sempre, mesmo com ela fechada; `etiqueta` =
+  // (z, y) da borda voltada para o sensor, de onde ele cresce para cima (y ≥ 0) ou para baixo
   const [dz, dy] = s.etiqueta ?? [0, 0.07];
-  etiqueta.position.set(x - 0.09, y + dy, z + dz);
-  etiqueta.billboardMode = Mesh.BILLBOARDMODE_ALL;
-  etiqueta.renderingGroupId = 1;
-  const tex = new DynamicTexture(`texEtiquetaSensor_${nome}`, { width: 320, height: 120 }, scene, true);
-  tex.hasAlpha = true;
-  const matEtiqueta = new StandardMaterial(`matEtiquetaSensor_${nome}`, scene);
-  matEtiqueta.diffuseTexture = tex;
-  matEtiqueta.emissiveTexture = tex;
-  matEtiqueta.useAlphaFromDiffuseTexture = true;
-  matEtiqueta.disableLighting = true;
-  matEtiqueta.backFaceCulling = false;
-  etiqueta.material = matEtiqueta;
-  malhas.push(etiqueta);
+  const borda = new Vector3(x - 0.09, y + dy, z + dz);
+  const balao = criarBalao(scene, {
+    nome,
+    ancora: paraMundo(c, borda),
+    sentido: dy >= 0 ? 1 : -1,
+    normal: paraMundo(c, new Vector3(-1, 0, 0)), // face aberta do compartimento (a tampa abre para -X do local)
+  });
+  malhas.push(balao.malha);
 
-  // linha de chamada: da borda da etiqueta voltada para o sensor até o LED
-  const borda = etiqueta.position.add(new Vector3(0, ((dy >= 0 ? -1 : 1) * ALTURA_ETIQUETA) / 2, 0));
+  // linha de chamada: da borda do balão até o LED (só com a tampa aberta, junto com o sensor)
   const linha = MeshBuilder.CreateLines(`linhaSensor_${nome}`, { points: [borda, ponta] }, scene);
-  linha.color = new Color3(0.85, 0.9, 0.95);
+  linha.color = new Color3(1, 0.35, 0.35);
   linha.isPickable = false;
   linha.parent = raiz;
 
@@ -703,17 +696,15 @@ function criarSensor(scene, raiz, c, s) {
     saidaCabo: saidaCabo && paraMundo(c, saidaCabo),
     fases: fases?.map((f) => paraMundo(c, f)),
     alvo: paraMundo(c, ponta), // LED do sensor, no mundo: a câmera vai até ele ao abrir a medição
-    balao: [etiqueta, linha],
+    balao: [balao.malha, linha],
     roda: rodaGirando,
     rota: s.rota,
     raioCabo: s.raioCabo,
     atualizar(estado, tv) {
-      const chave = `${estado.id}|${tv.valor}|${tv.unidade}`;
-      if (chave === anterior) return;
-      anterior = chave;
+      balao.atualizar(g, estado, tv, s.nome);
+      if (estado.id === anterior) return;
+      anterior = estado.id;
       matLed.emissiveColor = Color3.FromHexString(estado.cor);
-      desenharEtiqueta(tex.getContext(), g, estado, tv, s.nome);
-      tex.update();
     },
   };
   // desenha já na criação: textura nunca atualizada deixa a cena "não pronta" (whenReadyAsync não termina)
@@ -864,38 +855,6 @@ function criarPrensaCabo(scene, pai, pos, normal, hex = "#1d2024", escala = 1) {
 }
 const v3n = (p) => new Vector3(...p).normalize();
 
-export function desenharEtiqueta(ctx, g, estado, tv, nome = `Sensor de ${g.nome.toLowerCase()}`) {
-  const W = 320;
-  const H = 120;
-  ctx.clearRect(0, 0, W, H);
-  ctx.beginPath();
-  ctx.roundRect(3, 3, W - 6, H - 6, 18);
-  ctx.fillStyle = "rgba(17,24,33,0.93)";
-  ctx.fill();
-  ctx.lineWidth = 6;
-  ctx.strokeStyle = estado.cor;
-  ctx.stroke();
-  desenharIcone(ctx, g.icone, 16, 12, 30, "#cfe3f7", 2.2);
-  ctx.fillStyle = "#e9eef3";
-  ctx.font = "600 24px Segoe UI, Roboto, Arial, sans-serif";
-  ctx.textAlign = "left";
-  ctx.textBaseline = "middle";
-  ctx.fillText(nome, 56, 28);
-  ctx.textBaseline = "alphabetic";
-  ctx.font = "700 44px Segoe UI, Roboto, Arial, sans-serif";
-  ctx.fillStyle = estado.id === "semDados" ? "#8f99a3" : "#ffffff";
-  ctx.fillText(tv.valor, 18, 98);
-  const largura = ctx.measureText(tv.valor).width;
-  ctx.font = "500 22px Segoe UI, Roboto, Arial, sans-serif";
-  ctx.fillStyle = "#b9c4cf";
-  ctx.fillText(tv.unidade, 18 + largura + 8, 98);
-  ctx.font = "600 21px Segoe UI, Roboto, Arial, sans-serif";
-  ctx.textAlign = "right";
-  ctx.fillStyle = "#e9eef3";
-  ctx.fillText(estado.texto, W - 16, 96);
-  const larguraEstado = ctx.measureText(estado.texto).width;
-  desenharIcone(ctx, estado.icone, W - 16 - larguraEstado - 30, 76, 24, estado.cor, 2.6);
-}
 
 // ---------- desenho no lado de dentro da tampa (z → x do canvas, y → y do canvas)
 /** Folha de manutenção no lado de dentro da tampa (como na foto). */

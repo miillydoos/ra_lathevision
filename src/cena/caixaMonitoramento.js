@@ -19,7 +19,7 @@ import {
 import { GRANDEZA_POR_ID } from "../config/grandezas.js";
 import { ESTADOS } from "../config/estados.js";
 import { textoValor } from "../ui/sensoresUI.js";
-import { desenharEtiqueta } from "./compartimentos.js";
+import { criarBalao, desenharEtiqueta } from "./baloes.js";
 import { svgIcone } from "../util/icones.js";
 import { criarEmissor } from "../util/emissor.js";
 
@@ -99,6 +99,14 @@ export function criarCaixaMonitoramento({ scene, camera, selecao, fluxo, config 
   raiz.rotationQuaternion = Quaternion.RotationAxis(Axis.Y, CAIXA.giro);
   const malhas = raiz.getChildMeshes(false);
   const chamada = criarChamadaVibracao(scene, raiz); // fora de `malhas`: não é clicável nem muda de grupo
+  // com a caixa pousada no torno, o balão da vibração fica acima dela (grande e vermelho, como os dos outros
+  // sensores); clicar nele traz a caixa para a frente da tela
+  const topoCaixa = new Vector3(CAIXA.posicao[0], CAIXA.posicao[1] + H, CAIXA.posicao[2]);
+  const balao = criarBalao(scene, { nome: "caixaMonitoramento_vibracao", ancora: topoCaixa.add(new Vector3(0, 0.1, 0)) });
+  const linhaBalao = MeshBuilder.CreateLines("caixaMonitoramento_linhaBalao", { points: [balao.ancora, topoCaixa] }, scene);
+  linhaBalao.color = new Color3(1, 0.35, 0.35);
+  linhaBalao.isPickable = false;
+  let balaoVisivel = true; // botão de rótulos do painel de RV
 
   // prensa-cabo no tampo do cabeçote, onde chega o eletroduto (fica no torno quando a caixa sai do lugar)
   const base = new TransformNode("caixaMonitoramento_base", scene);
@@ -165,6 +173,7 @@ export function criarCaixaMonitoramento({ scene, camera, selecao, fluxo, config 
   }
   fundo.enablePointerMoveEvents = true; // com a caixa aberta, nada atrás do fundo mostra dica
   selecao.registrarClicavel(fundo, () => fechar(), null);
+  selecao.registrarClicavel(balao.malha, () => abrir(), dica);
 
   // o ponteiro parado não gera "move": a dica some quando a caixa sai do lugar e, no fim do voo,
   // é refeita para o que ficou sob o ponteiro (o texto dela muda entre abrir e fechar)
@@ -314,6 +323,8 @@ export function criarCaixaMonitoramento({ scene, camera, selecao, fluxo, config 
     const kVoo = suave(limitar(k / 0.7));
     const kTampa = suave(limitar((k - 0.5) / 0.5));
     chamada.raiz.setEnabled(kTampa === 1); // a etiqueta só aparece com a caixa parada na frente da tela
+    balao.mostrar(k === 0 && balaoVisivel); // e o balão de cima, só com ela no lugar
+    linhaBalao.setEnabled(k === 0 && balaoVisivel);
     if (k === 0) {
       raiz.position.copyFrom(repouso.posicao);
       raiz.rotationQuaternion.copyFrom(repouso.rotacao);
@@ -361,15 +372,24 @@ export function criarCaixaMonitoramento({ scene, camera, selecao, fluxo, config 
   // ---------- etiqueta do sensor de vibração (MPU-6050) com a leitura atual, como as dos compartimentos
   const atualizarChamada = () => {
     const e = fluxo.estado("vibracao");
-    chamada.atualizar(ESTADOS[e.estado] ?? ESTADOS.semDados, textoValor(config, "vibracao", e.valor));
+    const estado = ESTADOS[e.estado] ?? ESTADOS.semDados;
+    const tv = textoValor(config, "vibracao", e.valor);
+    chamada.atualizar(estado, tv);
+    balao.atualizar(GRANDEZA_POR_ID.vibracao, estado, tv, "Sensor de vibração");
   };
-  setInterval(() => alvo === 1 && atualizarChamada(), 250);
+  setInterval(atualizarChamada, 250);
   atualizarChamada();
   atualizarLcd();
 
   return {
     raiz,
     sensores: ["vibracao"], // medições cujo sensor fica aqui (MPU-6050)
+    /** Mostra ou esconde o balão de cima da caixa (botão de rótulos do painel de RV). */
+    mostrarEtiqueta(visivel) {
+      balaoVisivel = visivel;
+      balao.mostrar(visivel && k === 0);
+      linhaBalao.setEnabled(visivel && k === 0);
+    },
     abrir,
     fechar,
     alternar,
@@ -697,7 +717,7 @@ function criarChamadaVibracao(scene, raiz) {
   no.parent = raiz;
   no.setEnabled(false);
   const g = GRANDEZA_POR_ID.vibracao;
-  const largura = 0.075;
+  const largura = 0.085;
   const ponta = new Vector3(px(MPU.u), MPU.y + 0.002, pz(MPU.v));
 
   // o billboard não gira a própria posição com o pai: ela vem de uma âncora (abaixo da caixa na tela, onde
@@ -705,9 +725,9 @@ function criarChamadaVibracao(scene, raiz) {
   const ancora = new TransformNode("caixaMonitoramento_ancoraEtiqueta", scene);
   ancora.parent = no;
   ancora.position.set(-W / 2 - 0.024, H, 0.03);
-  const etiqueta = MeshBuilder.CreatePlane("caixaMonitoramento_etiquetaVibracao", { width: largura, height: (largura * 120) / 320 }, scene);
+  const etiqueta = MeshBuilder.CreatePlane("caixaMonitoramento_etiquetaVibracao", { width: largura, height: (largura * 240) / 640 }, scene);
   etiqueta.billboardMode = Mesh.BILLBOARDMODE_ALL;
-  const tex = new DynamicTexture("tex_caixaMonitoramento_etiquetaVibracao", { width: 320, height: 120 }, scene, true);
+  const tex = new DynamicTexture("tex_caixaMonitoramento_etiquetaVibracao", { width: 640, height: 240 }, scene, true);
   tex.hasAlpha = true;
   const matEtiqueta = new StandardMaterial("mat_caixaMonitoramento_etiquetaVibracao", scene);
   matEtiqueta.diffuseTexture = tex;
@@ -724,7 +744,7 @@ function criarChamadaVibracao(scene, raiz) {
   led.position.copyFrom(ponta);
   // do centro da etiqueta (ela cobre o pedaço de dentro) até o LED
   const linha = MeshBuilder.CreateLines("caixaMonitoramento_linhaVibracao", { points: [ancora.position.clone(), ponta] }, scene);
-  linha.color = new Color3(0.85, 0.9, 0.95);
+  linha.color = new Color3(1, 0.35, 0.35);
   for (const m of [linha, led, etiqueta]) {
     m.parent = m === etiqueta ? ancora : no;
     m.renderingGroupId = 3;
