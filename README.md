@@ -165,7 +165,7 @@ abrir as medições.
   abre ou fecha. O botão **Sensores** no topo (ou "Abrir tampas e ver sensores" no tour) abre as duas e leva a câmera
   até a do lado em que ela está: a caixa de engrenagens fica na lateral esquerda do cabeçote e o painel elétrico na
   traseira do gabinete do cabeçote (porta com dobradiça do lado do cabeçote). No painel fica o sensor de corrente, no
-  cabo do motor; na caixa, nível de óleo (ultrassônico) e rotação (sensor de velocidade), cada um com LED e um balão vermelho com o valor
+  cabo do motor; na caixa, nível de óleo (ultrassônico) e rotação (sensor de velocidade), cada um com LED e um balão azul translúcido com o valor
   (clicar abre a medição). Os balões ficam só nos sensores, grandes e sempre à mostra (mesmo com as tampas
   fechadas), crescem com a distância para serem lidos de longe, pulsam em alarme e somem quando a câmera está do
   outro lado da máquina; o da vibração fica acima da caixa de monitoramento (`src/cena/baloes.js`). Tampas e interiores (fundição, polia, trem de engrenagens, placa guardada; disjuntores,

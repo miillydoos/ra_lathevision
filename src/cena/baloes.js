@@ -1,7 +1,7 @@
 import { DynamicTexture, Mesh, MeshBuilder, StandardMaterial, Vector3 } from "@babylonjs/core";
 import { desenharIcone } from "../util/icones.js";
 
-// Balões com o valor das medições, presos aos sensores: vermelhos translúcidos, grandes e sempre por cima do modelo, de
+// Balões com o valor das medições, presos aos sensores: azuis translúcidos, grandes e sempre por cima do modelo, de
 // frente para a câmera, para serem vistos de longe. Na tela crescem com a distância da câmera (até ESCALA_MAX)
 // e continuam legíveis na vista geral; no headset ficam no tamanho real. Em alarme, pulsam.
 // O estado da medição (Normal, Atenção, Alarme, Sem dados) aparece em texto, com um ponto na cor do estado.
@@ -11,8 +11,8 @@ const TEX = { largura: 640, altura: 240 };
 const DISTANCIA_BASE = 0.9; // m: até aqui o balão fica no tamanho base; depois cresce junto com a distância
 const ESCALA_MAX = 3;
 
-const VERMELHO = "rgba(211, 47, 47, 0.55)"; // translúcido: o modelo aparece por trás
-const VERMELHO_SEM_DADOS = "rgba(110, 40, 40, 0.5)";
+const AZUL = "rgba(10, 95, 168, 0.55)"; // azul de destaque do app, translúcido: o modelo aparece por trás
+const AZUL_SEM_DADOS = "rgba(45, 60, 80, 0.5)";
 
 const registros = new WeakMap();
 /** Um laço por cena ajusta o tamanho e a posição de todos os balões. */
@@ -86,7 +86,7 @@ export function criarBalao(scene, { nome, ancora, sentido = 1, normal = null, gr
 }
 
 /**
- * Desenha o balão num canvas de proporção 320 × 120, em qualquer resolução: vermelho translúcido (o modelo
+ * Desenha o balão num canvas de proporção 320 × 120, em qualquer resolução: azul translúcido (o modelo
  * aparece por trás), borda fina, título pequeno, valor grande e o estado com um ponto na cor dele (nunca só a
  * cor: o texto do estado vai ao lado). `nome` é o título (padrão: "Sensor de <grandeza>").
  */
@@ -101,10 +101,10 @@ export function desenharEtiqueta(ctx, g, estado, tv, nome = `Sensor de ${g.nome.
   ctx.clearRect(0, 0, W, H);
   ctx.beginPath();
   ctx.roundRect(3, 3, W - 6, H - 6, 16);
-  ctx.fillStyle = semDados ? VERMELHO_SEM_DADOS : VERMELHO;
+  ctx.fillStyle = semDados ? AZUL_SEM_DADOS : AZUL;
   ctx.fill();
   ctx.lineWidth = 2;
-  ctx.strokeStyle = "rgba(255, 205, 205, 0.85)";
+  ctx.strokeStyle = "rgba(170, 210, 255, 0.85)";
   ctx.stroke();
 
   // sombra leve no texto: continua legível com o fundo claro aparecendo pelo balão
@@ -132,7 +132,7 @@ export function desenharEtiqueta(ctx, g, estado, tv, nome = `Sensor de ${g.nome.
   ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
   ctx.fillText(tv.unidade, 16 + largura + 6, 98);
 
-  // estado: texto à direita e um ponto na cor do estado (com aro branco, visível sobre o vermelho)
+  // estado: texto à direita e um ponto na cor do estado (com aro branco, visível sobre o azul)
   ctx.font = `700 16px ${FONTE}`;
   ctx.textAlign = "right";
   ctx.fillStyle = "#ffffff";

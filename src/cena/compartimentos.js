@@ -23,7 +23,7 @@ import { PRENSA_CABO_TAMPO } from "./caixaMonitoramento.js"; // só usado em tem
 // Compartimentos com sensores: o sensor de corrente fica no painel elétrico (traseira do gabinete do cabeçote);
 // nível de óleo (ultrassônico) e rotação (sensor de velocidade) ficam na caixa lateral de engrenagens; o de
 // vibração (MPU-6050) fica na caixa de monitoramento, no tampo do cabeçote (caixaMonitoramento.js).
-// Os balões das medições ficam só nos sensores: vermelhos, grandes e sempre à mostra, mesmo com as tampas
+// Os balões das medições ficam só nos sensores: azuis, grandes e sempre à mostra, mesmo com as tampas
 // fechadas (baloes.js).
 // As tampas são as do próprio torno.glb, giradas em dobradiças em tempo de execução (o arquivo não muda).
 // Coordenadas em metros, como no torno.glb; `dobradica` = eixo vertical (x, z); `sensores[].pos` = (z, y)
@@ -684,7 +684,7 @@ function criarSensor(scene, raiz, c, s) {
 
   // linha de chamada: da borda do balão até o LED (só com a tampa aberta, junto com o sensor)
   const linha = MeshBuilder.CreateLines(`linhaSensor_${nome}`, { points: [borda, ponta] }, scene);
-  linha.color = new Color3(1, 0.35, 0.35);
+  linha.color = new Color3(0.55, 0.8, 1);
   linha.isPickable = false;
   linha.parent = raiz;
 
