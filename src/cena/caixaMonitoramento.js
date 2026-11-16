@@ -1,6 +1,5 @@
 import {
   Axis,
-  Camera,
   Color3,
   Curve3,
   DynamicTexture,
@@ -20,7 +19,7 @@ import { GRANDEZA_POR_ID } from "../config/grandezas.js";
 import { ESTADOS } from "../config/estados.js";
 import { textoValor } from "../ui/sensoresUI.js";
 import { criarBalao, desenharEtiqueta } from "./baloes.js";
-import { svgIcone } from "../util/icones.js";
+import { criarPainelMedida, enquadrarAoLado } from "../ui/painelMedida.js";
 import { criarEmissor } from "../util/emissor.js";
 
 // Caixa do sistema de monitoramento (SENAI São Carlos), apoiada no tampo do cabeçote, na frente (lado do
@@ -29,8 +28,9 @@ import { criarEmissor } from "../util/emissor.js";
 // o ESP32-C3 Super Mini, o MPU-6050, o módulo de termopar HW-550 (MAX6675), dois optoacopladores, os bornes e
 // os cabos. Os cabos chegam por um eletroduto corrugado curto até o prensa-cabo do tampo, logo acima da caixa
 // de engrenagens: de lá descem até a canaleta dos sensores (ver compartimentos.js).
-// Clicar nela traz a caixa para a frente da tela com a tampa aberta (virada para o lado, presa pelo cabo de
-// 4 vias do LCD); arrastar gira, a roda aproxima, e Esc, um clique fora ou outro clique nela a devolvem.
+// Clicar nela (ou no balão da vibração) traz a caixa para a frente da tela com a tampa aberta (virada para o
+// lado, presa pelo cabo de 4 vias do LCD) e o painel com os dados da vibração ao lado; arrastar gira, a roda
+// aproxima, e Esc, um clique fora ou outro clique nela a devolvem.
 // Coordenadas em metros; no local da caixa X = largura, Y = altura (tampa em +Y) e Z = comprimento.
 // Apoiada no torno, a caixa fica girada `giro` em Y: +X do local aponta para -Z do mundo e +Z do local para
 // +X do mundo, e assim os dizeres ficam legíveis para o operador (em +Z, de frente para a máquina) e a entrada
@@ -52,6 +52,7 @@ const { largura: W, altura: H, comprimento: L, parede: E, tampa: T } = CAIXA;
 const DURACAO_ABRIR = 0.95; // s
 const DURACAO_FECHAR = 0.75;
 const PX_POR_M = 4000; // resolução das texturas desenhadas (4 px/mm)
+const RAIO_ABERTA = 1.05 * W; // m: caixa com a tampa aberta ao lado (2 W na vertical da tela), para o enquadramento
 
 // Posição dentro da caixa a partir da foto da caixa aberta: u = fração da largura interna (-X → +X),
 // v = fração do comprimento interno (-Z, lado da entrada dos cabos → +Z).
@@ -135,20 +136,16 @@ export function criarCaixaMonitoramento({ scene, camera, selecao, fluxo, config 
   fundo.rotationQuaternion = Quaternion.Identity();
   fundo.setEnabled(false);
 
-  // ---------- legenda (HTML) enquanto a caixa está aberta
-  const legenda = document.createElement("section");
-  legenda.className = "painel legenda-caixa";
-  legenda.hidden = true;
-  legenda.setAttribute("aria-label", "Sistema de monitoramento");
-  legenda.innerHTML = `
-    <header>
-      <h3>Sistema de monitoramento</h3>
-      <button type="button" class="fechar" aria-label="Fechar">${svgIcone("fechar", { tamanho: 18 })}</button>
-    </header>
-    <p>ESP32-C3 com o acelerômetro MPU-6050 (o sensor de vibração, a placa azul de baixo), o módulo de termopar HW-550 (MAX6675), dois optoacopladores e os bornes dos sensores. Na tampa, o LCD 16×2 mostra as leituras.</p>
-    <p class="sutil">Arraste para girar · role para aproximar · Esc ou clique fora para fechar</p>`;
-  legenda.querySelector(".fechar").addEventListener("click", () => fechar());
-  (document.getElementById("hud") ?? document.body).appendChild(legenda);
+  // ---------- painel com os dados da vibração (o MPU-6050 fica aqui), ao lado da caixa aberta
+  const painel = criarPainelMedida({ fluxo, config, aoFechar: () => fechar() });
+  const mostrarPainel = () =>
+    painel.mostrar({
+      id: "vibracao",
+      titulo: "Sistema de monitoramento",
+      subtitulo: "Sensor de vibração: acelerômetro MPU-6050",
+      descricao:
+        "ESP32-C3 com o acelerômetro MPU-6050 (o sensor de vibração, a placa azul de baixo), o módulo de termopar HW-550 (MAX6675), dois optoacopladores e os bornes dos sensores. Na tampa, o LCD 16×2 mostra as leituras.",
+    });
 
   // ---------- estado: k = 0 apoiada no torno, 1 aberta na frente da tela
   let k = 0;
@@ -196,7 +193,7 @@ export function criarCaixaMonitoramento({ scene, camera, selecao, fluxo, config 
       camera.detachControl();
       cameraSolta = true;
     }
-    legenda.hidden = false;
+    mostrarPainel();
     refazerDica(false);
     eventos.emitir("estado", true);
   }
@@ -210,7 +207,7 @@ export function criarCaixaMonitoramento({ scene, camera, selecao, fluxo, config 
       cameraSolta = false;
     }
     arrasto = null;
-    legenda.hidden = true;
+    painel.esconder();
     refazerDica(false);
     eventos.emitir("estado", false);
   }
@@ -259,28 +256,9 @@ export function criarCaixaMonitoramento({ scene, camera, selecao, fluxo, config 
   const tmp = { centro: Vector3.Zero(), deslocamento: Vector3.Zero() };
 
   function poseNaTela(kTampa) {
-    const cam = scene.activeCamera;
-    const inversa = cam.getWorldMatrix(); // inversa da matriz de vista
-    const direita = Vector3.TransformNormal(Axis.X, inversa).normalize();
-    const cima = Vector3.TransformNormal(Axis.Y, inversa).normalize();
-    const paraCamera = Vector3.TransformNormal(Axis.Z, inversa).normalize(); // cena destra: a câmera olha para -Z
-
-    // distância em que a caixa com a tampa aberta ocupa ~60% da altura (ou ~75% da largura) da vista
-    let d = 0.45;
-    if (cam === camera) {
-      const aspecto = engine.getAspectRatio(cam);
-      const t = Math.tan(cam.fov / 2);
-      const tanV = cam.fovMode === Camera.FOVMODE_HORIZONTAL_FIXED ? t / aspecto : t;
-      const tanH = tanV * aspecto;
-      d = Math.max((2.1 * W) / (2 * tanV * 0.6), (1.15 * L) / (2 * tanH * 0.75));
-    }
-    // centro na direção em que o alvo da câmera aparece (os painéis deslocam a vista com targetScreenOffset)
-    let c = new Vector3(0, 0, -d);
-    if (cam === camera) {
-      const t = Vector3.TransformCoordinates(camera.target, camera.getViewMatrix());
-      if (t.z < -0.05) c = t.scale(d / -t.z);
-    }
-    Vector3.TransformCoordinatesToRef(c, inversa, tmp.centro);
+    // caixa aberta ocupando ~58% da altura da vista, com o painel dos dados ao lado (painelMedida.js)
+    const { c, d, inversa, direita, cima, paraCamera, centro, tela } = enquadrarAoLado({ scene, camera, raio: RAIO_ABERTA, painel });
+    tmp.centro.copyFrom(centro);
 
     // eixos da caixa: X para cima, Y (tampa) para quem olha, Z para a direita; depois o giro do arrasto
     const r = Matrix.RotationAxis(direita, giro[0]).multiply(Matrix.RotationAxis(cima, giro[1]));
@@ -300,7 +278,7 @@ export function criarCaixaMonitoramento({ scene, camera, selecao, fluxo, config 
     fundo.rotationQuaternion = Quaternion.RotationQuaternionFromAxis(direita, cima, paraCamera);
     fundo.scaling.setAll(df * 8);
     luz.direction.copyFrom(paraCamera);
-    return { posicao, rotacao, escala };
+    return { posicao, rotacao, escala, tela };
   }
 
   scene.onBeforeRenderObservable.add(() => {
@@ -334,6 +312,7 @@ export function criarCaixaMonitoramento({ scene, camera, selecao, fluxo, config 
       Vector3.LerpToRef(repouso.posicao, p.posicao, kVoo, raiz.position);
       Quaternion.SlerpToRef(repouso.rotacao, p.rotacao, kVoo, raiz.rotationQuaternion);
       raiz.scaling.setAll(1 + (p.escala - 1) * kVoo);
+      if (alvo === 1) painel.posicionar(p.tela, zoom);
     }
     matFundo.alpha = 0.55 * kVoo;
     fundo.isPickable = alvo === 1;

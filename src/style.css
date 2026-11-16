@@ -957,21 +957,33 @@ body.tour-360-ativo #cartao-info { display: none !important; }
    Caixa do sistema de monitoramento (src/cena/caixaMonitoramento.js):
    legenda no topo enquanto a caixa está aberta na frente da tela
    ===================================================================== */
-.legenda-caixa {
+/* Painel com os dados da medição ao lado do sensor trazido para a frente da tela (painelMedida.js):
+   posição calculada a cada quadro ao lado do sensor; no celular, preso embaixo. */
+.painel-medida {
   position: fixed;
   top: 76px;
-  left: 50%;
-  transform: translateX(-50%);
+  left: calc(50% + 120px);
   z-index: 6;
-  width: min(460px, calc(100vw - 20px));
-  padding: 10px 14px;
-  animation: legenda-caixa-entra 0.35s ease-out;
+  width: 300px;
+  max-height: calc(100dvh - 92px);
+  overflow-y: auto;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  border-left: 4px solid var(--cor-estado, var(--sem-dados));
+  animation: painel-medida-entra 0.35s ease-out;
 }
-.legenda-caixa header { display: flex; align-items: start; justify-content: space-between; gap: 8px; }
-.legenda-caixa h3 { margin: 0 0 4px; font-size: 15px; }
-.legenda-caixa p { margin: 0 0 6px; color: #d7dee6; line-height: 1.45; }
-.legenda-caixa p.sutil { margin: 0; color: var(--texto-sutil); }
-.legenda-caixa .fechar {
+.painel-medida[data-estado="normal"] { --cor-estado: var(--normal); }
+.painel-medida[data-estado="atencao"] { --cor-estado: var(--atencao); }
+.painel-medida[data-estado="alarme"] { --cor-estado: var(--alarme); }
+.painel-medida[data-estado="semDados"] { --cor-estado: var(--sem-dados); }
+.painel-medida header { display: flex; align-items: start; gap: 8px; }
+.painel-medida .pm-icone { display: inline-flex; color: #cfe3f7; padding-top: 2px; }
+.painel-medida .pm-titulos { flex: 1; min-width: 0; }
+.painel-medida h3 { margin: 0; font-size: 15px; }
+.painel-medida .pm-sub { margin: 2px 0 0; color: var(--texto-sutil); font-size: 12.5px; }
+.painel-medida .fechar {
   display: inline-flex;
   background: none;
   border: 0;
@@ -979,16 +991,32 @@ body.tour-360-ativo #cartao-info { display: none !important; }
   cursor: pointer;
   padding: 2px;
 }
-.legenda-caixa .fechar:hover { color: var(--texto); }
-@keyframes legenda-caixa-entra {
-  from { opacity: 0; transform: translate(-50%, -8px); }
+.painel-medida .fechar:hover { color: var(--texto); }
+.pm-leitura { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.pm-leitura .valor { font-size: 34px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.1; }
+.pm-leitura .unidade { color: var(--texto-sutil); font-size: 14px; }
+.pm-leitura .estado-chip { margin-left: auto; font-size: 13px; }
+.painel-medida[data-estado="semDados"] .valor { color: var(--texto-sutil); }
+.pm-idade { color: var(--texto-sutil); font-size: 11.5px; margin-top: -4px; }
+.pm-grafico { display: block; width: 100%; height: 120px; }
+.pm-desc { margin: 0; color: #d7dee6; line-height: 1.45; font-size: 12.5px; }
+.painel-medida .pm-ajuda { margin: 0; font-size: 11.5px; }
+@keyframes painel-medida-entra {
+  from { opacity: 0; translate: 0 -8px; }
 }
 
 @media (max-width: 900px) {
-  .legenda-caixa { top: calc(var(--altura-topo) + 12px + env(safe-area-inset-top, 0px)); }
-  .legenda-caixa .fechar { width: 40px; height: 40px; align-items: center; justify-content: center; }
+  .painel-medida {
+    left: 8px;
+    right: 8px;
+    top: auto;
+    bottom: calc(var(--altura-abas) + 8px);
+    width: auto;
+    max-height: 44dvh;
+  }
+  .painel-medida .fechar { width: 40px; height: 40px; align-items: center; justify-content: center; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .legenda-caixa { animation: none; }
+  .painel-medida { animation: none; }
 }

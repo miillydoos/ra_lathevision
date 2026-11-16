@@ -32,7 +32,7 @@ export function tempoRelativo(agora) {
   };
 }
 
-function htmlEstado(estado) {
+export function htmlEstado(estado) {
   return `${svgIcone(estado.icone, { tamanho: 14, espessura: 2.4 })}<span>${estado.texto}</span>`;
 }
 
@@ -357,7 +357,7 @@ export function textoLimites(config, id) {
   return (partes.join(" · ") || "sem limites de alarme") + (lim.observacao ? `. ${lim.observacao}` : "");
 }
 
-function textoEstatisticas(config, id, pontos) {
+export function textoEstatisticas(config, id, pontos) {
   const vals = pontos.map((p) => p.v).filter((v) => v !== null);
   if (!vals.length) return "";
   if (id === "oleo" && config.grandezas.oleo?.sensor === "boia") return "";

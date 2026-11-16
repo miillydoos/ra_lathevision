@@ -65,6 +65,9 @@ export const COMPARTIMENTOS = [
         grandeza: "rotacao",
         tipo: "velocidade",
         nome: "Sensor de velocidade",
+        descricao:
+          "Módulo óptico LM393 com chave de fenda: a roda de 20 dentes presa na ponta do eixo-árvore passa pela fenda e cada dente corta o feixe infravermelho. São 20 pulsos por volta, convertidos em rpm.",
+        vista: [0.35, -0.55],
         pos: [0, 1.132],
         etiqueta: [0.15, 0.1],
         rota: [[-1.3405, 1.1912, 0.006], [-1.341, 1.1965, 0.0135], [-1.342, 1.215, 0.0145], [-1.344, 1.238, 0.0145], [-1.348, 1.258, 0.0145]],
@@ -76,6 +79,9 @@ export const COMPARTIMENTOS = [
         grandeza: "oleo",
         tipo: "ultrassonico",
         nome: "Nível de óleo (ultrassom)",
+        descricao:
+          "HC-SR04 na tampa do reservatório, com os transdutores voltados para o óleo: mede o tempo de ida e volta do ultrassom até a superfície e converte a distância em nível (%).",
+        vista: [0.3, -0.5],
         pos: [-0.165, 1.052],
         afastamento: 0.015,
         etiqueta: [-0.1, -0.12],
@@ -114,6 +120,9 @@ export const COMPARTIMENTOS = [
         grandeza: "corrente",
         tipo: "tc",
         nome: "Corrente (SCT-013)",
+        descricao:
+          "Transformador de corrente de núcleo dividido YHDC SCT-013 (100 A : 50 mA), fechado em volta de uma das fases do motor sem cortar o cabo: mede a corrente pelo campo magnético em volta do fio.",
+        vista: [0.4, 0.5],
         pos: [1.178, 0.825],
         etiqueta: [0, 0.06],
         raioCabo: 0.0021,
@@ -158,10 +167,11 @@ export function separarTampas(modelo) {
  * Painel elétrico e tampa da caixa de engrenagens que se abrem com a mão: arrastar a tampa (mouse, dedo ou,
  * no headset, pinça / gatilho apontando para ela) gira na dobradiça; clicar ou tocar abre ou fecha; o botão
  * Sensores abre ou fecha as duas e leva a câmera até elas. Dentro aparecem os sensores instalados, com LED e
- * etiqueta na cor do estado da medição; clicar num sensor abre a medição dele.
+ * etiqueta na cor do estado da medição; clicar num sensor ou no balão dele traz o sensor para a frente da tela,
+ * com os dados da medição ao lado (vitrineSensor.js, por `aoClicarSensor`).
  * Chamar depois de prepararMalhas (que congela as peças fixas). Emite "estado" (alguma tampa aberta).
  */
-export function criarCompartimentos({ scene, camera, selecao, tampas, fluxo, config, focar, aoAbrirGrandeza, placa }) {
+export function criarCompartimentos({ scene, camera, selecao, tampas, fluxo, config, focar, aoClicarSensor, placa }) {
   const eventos = criarEmissor();
   const botao = document.getElementById("btn-sensores");
   botao?.insertAdjacentHTML("afterbegin", svgIcone("porta"));
@@ -188,12 +198,10 @@ export function criarCompartimentos({ scene, camera, selecao, tampas, fluxo, con
     }
     interior.raiz.setEnabled(false);
     for (const m of interior.extras) m.setEnabled(false);
-    const abrirMedicao = (id) => () => {
-      selecao.selecionar(c.componente);
-      aoAbrirGrandeza?.(id);
-    };
+    // clicar no sensor ou no balão dele: o sensor vem para a frente da tela (passar o mouse destaca o sensor)
     for (const s of interior.sensores) {
-      for (const m of s.malhas) selecao.registrarClicavel(m, abrirMedicao(s.id), selecao.porId(c.componente));
+      const dica = { id: `sensor_${s.id}`, nome: `${s.nome}: clique para ver de perto`, malhas: s.pecas() };
+      for (const m of s.malhas) selecao.registrarClicavel(m, () => aoClicarSensor?.(s.id), dica);
     }
     // k = quanto está aberta (0 fechada, 1 aberta); alvo = para onde vai quando ninguém está segurando
     return { ...c, eixo, interior, malhasTampa, k: 0, kAplicado: -1, alvo: 0, segurando: false };
@@ -333,12 +341,11 @@ export function criarCompartimentos({ scene, camera, selecao, tampas, fluxo, con
     mostrarEtiquetas(visivel) {
       for (const s of sensores) for (const m of s.balao) m.setEnabled(visivel);
     },
-    /** Câmera para ver o sensor da grandeza `id` com a tampa aberta, ou null se ele não fica num compartimento. */
-    vistaDoSensor(id) {
-      const c = comps.find((c) => c.interior.sensores.some((s) => s.id === id));
-      if (!c) return null;
-      const s = c.interior.sensores.find((s) => s.id === id);
-      return { alvo: s.alvo, alfa: c.vista.alfa, beta: c.vista.beta, raio: 0.85 };
+    /** Sensor da grandeza `id` para a vista de perto (vitrineSensor.js), ou null se ele não fica num compartimento. */
+    pecaDoSensor(id) {
+      const s = sensores.find((s) => s.id === id);
+      if (!s) return null;
+      return { id, nome: s.nome, descricao: s.descricao, vista: s.vista, pecas: s.pecas(), quadros: s.quadros, giro: s.giro, frente: s.frente };
     },
     get aberto() {
       return algumaAberta();
@@ -354,6 +361,7 @@ function criarInterior(scene, c, config) {
   const sensoresRaiz = new TransformNode(`sensores_${c.id}`, scene);
   sensoresRaiz.parent = raiz;
   const sensores = c.sensores.map((s) => criarSensor(scene, sensoresRaiz, c, s));
+  for (const s of sensores) s.quadros = new Set([raiz, sensoresRaiz]); // as peças do reservatório ficam em `raiz`
   if (c.chicote) criarChicote(scene, sensoresRaiz, c, sensores);
   if (c.reservatorio) {
     // o reservatório fica visível com a tampa entreaberta (como as peças do torno.glb); o óleo dentro
@@ -498,6 +506,7 @@ function criarSensor(scene, raiz, c, s) {
   let saidaCabo = null; // de onde o cabo do sensor sai (o resto do cabo é do chicote)
   let fases = null;
   let rodaGirando = null; // nó que gira com o eixo-árvore (roda dentada do sensor de velocidade)
+  const soNaVitrine = []; // peças que só aparecem na vista de perto
   if (s.tipo === "indutivo") {
     // sensor cilíndrico em pé, logo abaixo da polia, com a face voltada para ela (como na máquina real)
     const xs = x - 0.026;
@@ -533,6 +542,13 @@ function criarSensor(scene, raiz, c, s) {
       m.position.set(cx, cy, cz);
       return m;
     };
+    // na vista de perto não há o resto da fiação: um trecho da fase preta atravessa a janela
+    const fase = MeshBuilder.CreateCylinder("faseSCT013", { diameter: 0.0092, height: 0.1, tessellation: 20 }, scene);
+    fase.material = cor(scene, "#16191d", 0.1);
+    fase.parent = raiz;
+    fase.position.set(xc, y, z);
+    fase.setEnabled(false);
+    soNaVitrine.push(fase);
     bloco(traseira, W, azul, xc + J / 2 + traseira / 2, z); // atrás da janela
     for (const lado of [-1, 1]) bloco(J, (W - J) / 2, azul, xc, z + (lado * (W + J)) / 4); // laterais da janela
     bloco(frente, W, azul, xc - J / 2 - frente / 2, z); // frente (rótulo)
@@ -680,6 +696,7 @@ function criarSensor(scene, raiz, c, s) {
     sentido: dy >= 0 ? 1 : -1,
     normal: paraMundo(c, new Vector3(-1, 0, 0)), // face aberta do compartimento (a tampa abre para -X do local)
   });
+  balao.malha.enablePointerMoveEvents = true; // dica "clique para ver de perto"
   malhas.push(balao.malha);
 
   // linha de chamada: da borda do balão até o LED (só com a tampa aberta, junto com o sensor)
@@ -691,11 +708,17 @@ function criarSensor(scene, raiz, c, s) {
   let anterior = "";
   const sensor = {
     id: g.id,
+    nome: s.nome,
+    descricao: s.descricao,
+    vista: s.vista,
     malhas,
+    /** Peças do sensor (sem o balão) para a vista de perto; inclui as do reservatório, juntadas depois. */
+    pecas: () => [...malhas.filter((m) => m !== balao.malha), ...soNaVitrine],
+    giro: c.giro ?? 0,
+    frente: paraMundo(c, new Vector3(-1, 0, 0)), // a face aberta do compartimento (a tampa abre para -X do local)
     // para o chicote, em coordenadas do mundo (o interior pode estar girado)
     saidaCabo: saidaCabo && paraMundo(c, saidaCabo),
     fases: fases?.map((f) => paraMundo(c, f)),
-    alvo: paraMundo(c, ponta), // LED do sensor, no mundo: a câmera vai até ele ao abrir a medição
     balao: [balao.malha, linha],
     roda: rodaGirando,
     rota: s.rota,

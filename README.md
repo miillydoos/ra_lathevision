@@ -166,9 +166,13 @@ abrir as medições.
   até a do lado em que ela está: a caixa de engrenagens fica na lateral esquerda do cabeçote e o painel elétrico na
   traseira do gabinete do cabeçote (porta com dobradiça do lado do cabeçote). No painel fica o sensor de corrente, no
   cabo do motor; na caixa, nível de óleo (ultrassônico) e rotação (sensor de velocidade), cada um com LED e um balão azul translúcido com o valor
-  (clicar abre a medição). Os balões ficam só nos sensores, grandes e sempre à mostra (mesmo com as tampas
+  (`src/cena/baloes.js`). Os balões ficam só nos sensores, grandes e sempre à mostra (mesmo com as tampas
   fechadas), crescem com a distância para serem lidos de longe, pulsam em alarme e somem quando a câmera está do
-  outro lado da máquina; o da vibração fica acima da caixa de monitoramento (`src/cena/baloes.js`). Tampas e interiores (fundição, polia, trem de engrenagens, placa guardada; disjuntores,
+  outro lado da máquina; o da vibração fica acima da caixa de monitoramento. Clicar num balão (ou no sensor) traz só
+  o sensor para a frente da tela, com o resto escurecido e um painel ao lado com os dados da medição (valor, estado,
+  gráfico da janela recente, mín/média/máx, o que o sensor faz e os limites); arrastar gira, a roda aproxima e Esc ou
+  um clique fora o devolvem (`src/cena/vitrineSensor.js`, `src/ui/painelMedida.js`). O balão da vibração faz o mesmo
+  com a caixa de monitoramento, que vem aberta. Tampas e interiores (fundição, polia, trem de engrenagens, placa guardada; disjuntores,
   contatores, borneira, canaletas e fiação) estão no `torno.glb`, modelados a partir das fotos em `public/fotos/`; as
   tampas giram em tempo de execução (o arquivo não muda). Os cabos dos sensores correm por canaletas e prensa-cabos:
   no painel, o cabo do motor entra pelo piso e as três fases sobem até a borneira (a preta pelo SCT-013), e o cabo do

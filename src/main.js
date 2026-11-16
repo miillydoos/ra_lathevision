@@ -6,6 +6,7 @@ import { criarAnimacaoPlaca } from "./cena/placa.js";
 import { criarSala } from "./cena/sala.js";
 import { criarCompartimentos, removerReservatorioQuadrado, separarTampas } from "./cena/compartimentos.js";
 import { criarCaixaMonitoramento } from "./cena/caixaMonitoramento.js";
+import { criarVitrineSensor } from "./cena/vitrineSensor.js";
 import { sincronizarCena } from "./cena/sincronizarCena.js";
 import { iniciarXR } from "./xr/xr.js";
 import { criarPainelXR } from "./xr/painelXR.js";
@@ -55,7 +56,7 @@ async function iniciar() {
   // ---------- dados
   const fluxo = criarFluxo(config);
 
-  // abrir uma grandeza: cartão no HUD, gráfico no painel de RV e câmera no sensor dela
+  // abrir uma grandeza: cartão no HUD, gráfico no painel de RV e o sensor dela na frente da tela
   let sensoresUI = null;
   let painelXR = null;
   let mostrarMedicoes = null; // definido pelo layout dos painéis
@@ -71,7 +72,8 @@ async function iniciar() {
   sensoresUI = criarSensoresUI({ fluxo, config, aoSelecionarGrandeza: (id) => id && painelXR?.definirGrandeza(id) });
   criarConexaoUI({ fluxo });
   sincronizarCena({ fluxo, placa });
-  // botão Sensores: abre o painel elétrico (corrente) e a tampa da caixa de engrenagens (demais sensores)
+  // botão Sensores: abre o painel elétrico (corrente) e a tampa da caixa de engrenagens (demais sensores);
+  // clicar num sensor ou no balão dele traz o sensor para a frente da tela
   const compartimentos = criarCompartimentos({
     scene,
     camera,
@@ -80,19 +82,24 @@ async function iniciar() {
     fluxo,
     config,
     focar,
-    aoAbrirGrandeza: (id) => abrirGrandeza(id, { focarCamera: false }),
+    aoClicarSensor: (id) => mostrarSensor?.(id),
     placa, // a roda do sensor de velocidade gira com o eixo-árvore
   });
   // caixa do sistema de monitoramento no tampo do cabeçote: clicar traz para a frente da tela, aberta
   const caixa = criarCaixaMonitoramento({ scene, camera, selecao, fluxo, config });
-  // os balões das medições ficam só nos sensores: abrir uma medição leva até o sensor dela (o de vibração,
-  // MPU-6050, está na caixa de monitoramento; os outros, atrás das tampas, que se abrem)
+  // vista de perto: o sensor vem para a frente da tela, com os dados da medição ao lado (o de vibração,
+  // MPU-6050, vem com a caixa de monitoramento; os outros, sozinhos, de dentro dos compartimentos)
+  const vitrine = criarVitrineSensor({ scene, camera, selecao, fluxo, config });
   mostrarSensor = (id) => {
-    if (caixa.sensores.includes(id)) return caixa.abrir();
-    const v = compartimentos.vistaDoSensor(id);
-    if (!v) return;
-    compartimentos.abrir({ focarCamera: false });
-    focar(v.alvo.clone(), v.raio, { alfa: v.alfa, beta: v.beta, duracao: 1100 });
+    painelXR?.definirGrandeza(id);
+    if (caixa.sensores.includes(id)) {
+      vitrine.fechar({ imediato: true });
+      return caixa.abrir();
+    }
+    const peca = compartimentos.pecaDoSensor(id);
+    if (!peca) return;
+    caixa.fechar({ imediato: true });
+    vitrine.mostrar(peca);
   };
 
   // ---------- RV / RA
@@ -269,6 +276,8 @@ async function iniciar() {
     tour,
     compartimentos,
     caixa,
+    vitrine,
+    mostrarSensor,
     vistaInicial,
   });
   window.__pronto = true;
