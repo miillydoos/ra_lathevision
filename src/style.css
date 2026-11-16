@@ -958,7 +958,8 @@ body.tour-360-ativo #cartao-info { display: none !important; }
    legenda no topo enquanto a caixa está aberta na frente da tela
    ===================================================================== */
 /* Painel com os dados da medição ao lado do sensor trazido para a frente da tela (painelMedida.js):
-   posição calculada a cada quadro ao lado do sensor; no celular, preso embaixo. */
+   posição calculada a cada quadro ao lado do sensor; no celular, preso embaixo. Entra deslizando quando o
+   sensor termina de chegar (.chegando sai) e sai do mesmo jeito. */
 .painel-medida {
   position: fixed;
   top: 76px;
@@ -972,8 +973,9 @@ body.tour-360-ativo #cartao-info { display: none !important; }
   flex-direction: column;
   gap: 7px;
   border-left: 4px solid var(--cor-estado, var(--sem-dados));
-  animation: painel-medida-entra 0.35s ease-out;
+  transition: opacity 0.3s ease, transform 0.38s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
+.painel-medida.chegando { opacity: 0; transform: translateX(18px) scale(0.98); pointer-events: none; }
 .painel-medida[data-estado="normal"] { --cor-estado: var(--normal); }
 .painel-medida[data-estado="atencao"] { --cor-estado: var(--atencao); }
 .painel-medida[data-estado="alarme"] { --cor-estado: var(--alarme); }
@@ -1001,10 +1003,6 @@ body.tour-360-ativo #cartao-info { display: none !important; }
 .pm-grafico { display: block; width: 100%; height: 120px; }
 .pm-desc { margin: 0; color: #d7dee6; line-height: 1.45; font-size: 12.5px; }
 .painel-medida .pm-ajuda { margin: 0; font-size: 11.5px; }
-@keyframes painel-medida-entra {
-  from { opacity: 0; translate: 0 -8px; }
-}
-
 @media (max-width: 900px) {
   .painel-medida {
     left: 8px;
@@ -1014,9 +1012,10 @@ body.tour-360-ativo #cartao-info { display: none !important; }
     width: auto;
     max-height: 44dvh;
   }
+  .painel-medida.chegando { transform: translateY(18px); }
   .painel-medida .fechar { width: 40px; height: 40px; align-items: center; justify-content: center; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .painel-medida { animation: none; }
+  .painel-medida { transition: none; }
 }

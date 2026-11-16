@@ -9,7 +9,6 @@ import {
   MeshBuilder,
   PBRMaterial,
   PickingInfo,
-  PointerEventTypes,
   Quaternion,
   StandardMaterial,
   TransformNode,
@@ -20,6 +19,7 @@ import { ESTADOS } from "../config/estados.js";
 import { textoValor } from "../ui/sensoresUI.js";
 import { criarBalao, desenharEtiqueta } from "./baloes.js";
 import { criarPainelMedida, enquadrarAoLado } from "../ui/painelMedida.js";
+import { criarDestaque, curvas, pontoDoVoo } from "./destaque.js";
 import { criarEmissor } from "../util/emissor.js";
 
 // Caixa do sistema de monitoramento (SENAI São Carlos), apoiada no tampo do cabeçote, na frente (lado do
@@ -29,8 +29,9 @@ import { criarEmissor } from "../util/emissor.js";
 // os cabos. Os cabos chegam por um eletroduto corrugado curto até o prensa-cabo do tampo, logo acima da caixa
 // de engrenagens: de lá descem até a canaleta dos sensores (ver compartimentos.js).
 // Clicar nela (ou no balão da vibração) traz a caixa para a frente da tela com a tampa aberta (virada para o
-// lado, presa pelo cabo de 4 vias do LCD) e o painel com os dados da vibração ao lado; arrastar gira, a roda
-// aproxima, e Esc, um clique fora ou outro clique nela a devolvem.
+// lado, presa pelo cabo de 4 vias do LCD) e o painel com os dados da vibração ao lado, com os efeitos da vista de
+// perto (destaque.js: arco no voo, pulo e onda na chegada, foco de luz e zoom da cena de trás); arrastar gira
+// (com inércia), a roda aproxima, e Esc, um clique fora ou outro clique nela a devolvem.
 // Coordenadas em metros; no local da caixa X = largura, Y = altura (tampa em +Y) e Z = comprimento.
 // Apoiada no torno, a caixa fica girada `giro` em Y: +X do local aponta para -Z do mundo e +Z do local para
 // +X do mundo, e assim os dizeres ficam legíveis para o operador (em +Z, de frente para a máquina) e a entrada
@@ -49,8 +50,9 @@ export const CAIXA = {
 };
 
 const { largura: W, altura: H, comprimento: L, parede: E, tampa: T } = CAIXA;
-const DURACAO_ABRIR = 0.95; // s
+const DURACAO_ABRIR = 1.1; // s
 const DURACAO_FECHAR = 0.75;
+const PULO = 0.06; // a caixa cresce 6% e volta, ao terminar de abrir
 const PX_POR_M = 4000; // resolução das texturas desenhadas (4 px/mm)
 const RAIO_ABERTA = 1.05 * W; // m: caixa com a tampa aberta ao lado (2 W na vertical da tela), para o enquadramento
 
@@ -123,18 +125,16 @@ export function criarCaixaMonitoramento({ scene, camera, selecao, fluxo, config 
   luz.specular = Color3.Black();
   luz.intensity = 0;
 
-  // fundo escurecido atrás da caixa aberta; clicar nele fecha
-  const fundo = MeshBuilder.CreatePlane("caixaMonitoramento_fundo", { size: 1 }, scene);
-  const matFundo = new StandardMaterial("matCaixaMonitoramento_fundo", scene);
-  matFundo.diffuseColor = Color3.Black();
-  matFundo.specularColor = Color3.Black();
-  matFundo.disableLighting = true;
-  matFundo.backFaceCulling = false;
-  matFundo.alpha = 0;
-  fundo.material = matFundo;
-  fundo.renderingGroupId = 2;
-  fundo.rotationQuaternion = Quaternion.Identity();
-  fundo.setEnabled(false);
+  // fundo escurecido atrás da caixa aberta (clicar nele fecha), foco de luz, onda, zoom da cena de trás e o
+  // arrastar / rolar suaves
+  const destaque = criarDestaque(scene, {
+    nome: "caixaMonitoramento",
+    camera,
+    selecao,
+    aoClicarFundo: () => fechar(),
+    aoFechar: () => fechar(),
+    limiteInclinacao: 1.3,
+  });
 
   // ---------- painel com os dados da vibração (o MPU-6050 fica aqui), ao lado da caixa aberta
   const painel = criarPainelMedida({ fluxo, config, aoFechar: () => fechar() });
@@ -153,8 +153,6 @@ export function criarCaixaMonitoramento({ scene, camera, selecao, fluxo, config 
   let kAplicado = -1;
   let grupo = 0;
   let cameraSolta = false;
-  const giro = [...CAIXA.giroInicial];
-  let zoom = 1;
   const repouso = { posicao: raiz.position.clone(), rotacao: raiz.rotationQuaternion.clone() };
 
   const dica = {
@@ -168,8 +166,6 @@ export function criarCaixaMonitoramento({ scene, camera, selecao, fluxo, config 
     m.enablePointerMoveEvents = true; // sem isto o "move" atravessa a caixa e mostra a dica da porta do painel atrás
     selecao.registrarClicavel(m, () => alternar(), dica);
   }
-  fundo.enablePointerMoveEvents = true; // com a caixa aberta, nada atrás do fundo mostra dica
-  selecao.registrarClicavel(fundo, () => fechar(), null);
   selecao.registrarClicavel(balao.malha, () => abrir(), dica);
 
   // o ponteiro parado não gera "move": a dica some quando a caixa sai do lugar e, no fim do voo,
@@ -185,8 +181,7 @@ export function criarCaixaMonitoramento({ scene, camera, selecao, fluxo, config 
   function abrir() {
     if (alvo === 1) return;
     alvo = 1;
-    giro.splice(0, 2, ...CAIXA.giroInicial);
-    zoom = 1;
+    destaque.ativar(true, CAIXA.giroInicial);
     // a câmera orbital fica parada; arrastar passa a girar a caixa
     if (scene.activeCamera === camera && camera.inputs.attachedToElement) {
       camera.inertialAlphaOffset = camera.inertialBetaOffset = camera.inertialRadiusOffset = 0;
@@ -206,7 +201,7 @@ export function criarCaixaMonitoramento({ scene, camera, selecao, fluxo, config 
       camera.attachControl(canvas, true); // como em cena.js
       cameraSolta = false;
     }
-    arrasto = null;
+    destaque.ativar(false);
     painel.esconder();
     refazerDica(false);
     eventos.emitir("estado", false);
@@ -214,50 +209,20 @@ export function criarCaixaMonitoramento({ scene, camera, selecao, fluxo, config 
 
   const alternar = () => (alvo === 1 ? fechar() : abrir());
 
-  // ---------- arrastar gira a caixa, a roda aproxima (só com ela aberta)
-  let arrasto = null;
   scene.onPointerObservable.add((pi) => {
     tipoPonteiro = pi.event.pointerType ?? tipoPonteiro; // a roda (WheelEvent) não tem tipo
-    if (alvo !== 1) return;
-    const e = pi.event;
-    if (pi.type === PointerEventTypes.POINTERDOWN) {
-      arrasto = { id: e.pointerId, x: e.clientX, y: e.clientY };
-    } else if (pi.type === PointerEventTypes.POINTERMOVE && arrasto && e.pointerId === arrasto.id) {
-      giro[1] += (e.clientX - arrasto.x) * 0.008;
-      giro[0] = Math.max(-1.3, Math.min(1.3, giro[0] + (e.clientY - arrasto.y) * 0.008));
-      arrasto.x = e.clientX;
-      arrasto.y = e.clientY;
-    } else if (pi.type === PointerEventTypes.POINTERUP) {
-      arrasto = null;
-    }
   });
-  canvas.addEventListener(
-    "wheel",
-    (e) => {
-      if (alvo === 1) zoom = Math.max(0.6, Math.min(2.4, zoom * Math.exp(-e.deltaY * 0.0012)));
-    },
-    { passive: true },
-  );
-  // Esc fecha a caixa antes de recolher painéis ou sair da apresentação
-  window.addEventListener(
-    "keydown",
-    (e) => {
-      if (e.key !== "Escape" || alvo !== 1 || document.querySelector("dialog[open]")) return;
-      fechar();
-      e.preventDefault();
-      e.stopImmediatePropagation();
-    },
-    true,
-  );
 
   // ---------- pose na frente da tela, recalculada a cada quadro (acompanha a câmera)
-  const suave = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+  const suave = curvas.suave;
   const limitar = (t) => Math.max(0, Math.min(1, t));
   const tmp = { centro: Vector3.Zero(), deslocamento: Vector3.Zero() };
 
   function poseNaTela(kTampa) {
     // caixa aberta ocupando ~58% da altura da vista, com o painel dos dados ao lado (painelMedida.js)
-    const { c, d, inversa, direita, cima, paraCamera, centro, tela } = enquadrarAoLado({ scene, camera, raio: RAIO_ABERTA, painel });
+    const q = enquadrarAoLado({ scene, camera, raio: RAIO_ABERTA, painel });
+    const { direita, cima, paraCamera, centro } = q;
+    const giro = destaque.giro;
     tmp.centro.copyFrom(centro);
 
     // eixos da caixa: X para cima, Y (tampa) para quem olha, Z para a direita; depois o giro do arrasto
@@ -268,34 +233,28 @@ export function criarCaixaMonitoramento({ scene, camera, selecao, fluxo, config 
       Vector3.TransformNormal(direita, r),
     );
     // gira em torno do centro do conjunto (caixa + tampa aberta), não da base
-    const escala = zoom;
+    const escala = destaque.zoom;
     new Vector3((W / 2) * kTampa, H / 2, 0).scale(escala).rotateByQuaternionToRef(rotacao, tmp.deslocamento);
     const posicao = tmp.centro.subtract(tmp.deslocamento);
-
-    // fundo: mais atrás no mesmo raio, cobrindo a vista inteira
-    const df = d + 0.3 * escala;
-    fundo.position.copyFrom(Vector3.TransformCoordinates(c.scale(df / d), inversa));
-    fundo.rotationQuaternion = Quaternion.RotationQuaternionFromAxis(direita, cima, paraCamera);
-    fundo.scaling.setAll(df * 8);
     luz.direction.copyFrom(paraCamera);
-    return { posicao, rotacao, escala, tela };
+    return { posicao, rotacao, escala, q };
   }
 
   scene.onBeforeRenderObservable.add(() => {
+    const dt = Math.min(0.1, engine.getDeltaTime() / 1000);
     if (k !== alvo) {
-      const dt = Math.min(0.1, engine.getDeltaTime() / 1000);
       k = alvo ? Math.min(1, k + dt / DURACAO_ABRIR) : Math.max(0, k - dt / DURACAO_FECHAR);
       if (k === alvo) refazerDica(true);
     }
     if (k === kAplicado && k === 0) return;
     kAplicado = k;
+    destaque.passo(dt);
 
     // sobre o torno: desenho normal; fora dele, por cima de tudo (inclusive dos rótulos)
     const g = k > 0 ? 2 : 0;
     if (g !== grupo) {
       grupo = g;
       for (const m of malhas) m.renderingGroupId = g;
-      fundo.setEnabled(g === 2);
     }
     // voo de ida até 70% do tempo; a tampa abre a partir da metade (na volta, fecha antes de voar)
     const kVoo = suave(limitar(k / 0.7));
@@ -307,15 +266,20 @@ export function criarCaixaMonitoramento({ scene, camera, selecao, fluxo, config 
       raiz.position.copyFrom(repouso.posicao);
       raiz.rotationQuaternion.copyFrom(repouso.rotacao);
       raiz.scaling.setAll(1);
+      destaque.atualizar({ k: 0 });
     } else {
       const p = poseNaTela(kTampa);
-      Vector3.LerpToRef(repouso.posicao, p.posicao, kVoo, raiz.position);
+      // voo em arco, crescendo por igual na tela (destaque.js)
+      pontoDoVoo(scene.activeCamera.globalPosition, repouso.posicao, p.posicao, kVoo, p.q, raiz.position);
       Quaternion.SlerpToRef(repouso.rotacao, p.rotacao, kVoo, raiz.rotationQuaternion);
-      raiz.scaling.setAll(1 + (p.escala - 1) * kVoo);
-      if (alvo === 1) painel.posicionar(p.tela, zoom);
+      const pulo = alvo === 1 ? 1 + PULO * curvas.pulo(k, 0.75) : 1; // quando a tampa termina de abrir
+      raiz.scaling.setAll((1 + (p.escala - 1) * kVoo) * pulo);
+      destaque.atualizar({ q: p.q, raio: RAIO_ABERTA * p.escala, k: kVoo, abrindo: alvo === 1 });
+      if (alvo === 1) {
+        painel.posicionar(p.q.tela, p.escala);
+        if (kTampa > 0.5) painel.revelar();
+      }
     }
-    matFundo.alpha = 0.55 * kVoo;
-    fundo.isPickable = alvo === 1;
     luz.intensity = 0.45 * kVoo;
     const angulo = CAIXA.anguloTampa * kTampa;
     if (dobradica.rotation.z !== angulo) {

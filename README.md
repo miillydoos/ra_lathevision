@@ -169,9 +169,11 @@ abrir as medições.
   (`src/cena/baloes.js`). Os balões ficam só nos sensores, grandes e sempre à mostra (mesmo com as tampas
   fechadas), crescem com a distância para serem lidos de longe, pulsam em alarme e somem quando a câmera está do
   outro lado da máquina; o da vibração fica acima da caixa de monitoramento. Clicar num balão (ou no sensor) traz só
-  o sensor para a frente da tela, com o resto escurecido e um painel ao lado com os dados da medição (valor, estado,
-  gráfico da janela recente, mín/média/máx, o que o sensor faz e os limites); arrastar gira, a roda aproxima e Esc ou
-  um clique fora o devolvem (`src/cena/vitrineSensor.js`, `src/ui/painelMedida.js`). O balão da vibração faz o mesmo
+  o sensor para a frente da tela: ele sobe num arco dando uma volta, chega com um leve pulo e uma onda de luz, e a
+  cena de trás se aproxima e escurece, com um foco azul atrás dele; o painel ao lado entra deslizando com os dados da
+  medição (valor, estado, gráfico da janela recente, mín/média/máx, o que o sensor faz e os limites). Arrastar gira
+  (com inércia), a roda aproxima e Esc ou um clique fora o devolvem (`src/cena/vitrineSensor.js`,
+  `src/cena/destaque.js`, `src/ui/painelMedida.js`). O balão da vibração faz o mesmo
   com a caixa de monitoramento, que vem aberta. Tampas e interiores (fundição, polia, trem de engrenagens, placa guardada; disjuntores,
   contatores, borneira, canaletas e fiação) estão no `torno.glb`, modelados a partir das fotos em `public/fotos/`; as
   tampas giram em tempo de execução (o arquivo não muda). Os cabos dos sensores correm por canaletas e prensa-cabos:

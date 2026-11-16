@@ -8,6 +8,7 @@ import { htmlEstado, tempoRelativo, textoEstatisticas, textoIdade, textoLimites,
 // Painel com os dados de uma medição, ao lado do sensor trazido para a frente da tela (vitrineSensor.js e a
 // caixa de monitoramento): valor atual, estado, gráfico da janela recente, mín / média / máx, o que o sensor
 // faz, o ponto medido e os limites. No celular fica preso embaixo da tela, e o sensor sobe para o espaço livre.
+// O painel entra deslizando quando o objeto termina de chegar (revelar) e sai do mesmo jeito.
 
 const VAO = 20; // px entre o sensor e o painel
 const celular = () => window.matchMedia("(max-width: 900px)").matches;
@@ -51,7 +52,21 @@ export function criarPainelMedida({ fluxo, config, aoFechar }) {
     limites: $(".pm-limites"),
   };
   $(".fechar").addEventListener("click", () => aoFechar?.());
+  el.classList.add("chegando");
   (document.getElementById("hud") ?? document.body).appendChild(el);
+
+  // medidas guardadas (ler o layout a cada quadro, logo depois de mudar a posição, trava a animação)
+  const medidas = { largura: 300, altura: 400, topoLivre: 0, baseInferior: 0 };
+  function medir() {
+    medidas.largura = el.offsetWidth || medidas.largura;
+    medidas.altura = el.offsetHeight || medidas.altura;
+    medidas.topoLivre = document.querySelector(".topo")?.getBoundingClientRect().bottom ?? 0;
+    medidas.baseInferior = parseFloat(getComputedStyle(el).bottom) || 0;
+  }
+  new ResizeObserver(medir).observe(el);
+  window.addEventListener("resize", medir);
+  let ultimo = "";
+  let saida = null;
 
   let id = null;
   function atualizar() {
@@ -98,31 +113,51 @@ export function criarPainelMedida({ fluxo, config, aoFechar }) {
       campos.limites.textContent = textoLimites(config, novo);
       campos.grafico.setAttribute("aria-label", `Gráfico de ${g.nome} nos últimos ${config.janelaGraficoS} s`);
       el.setAttribute("aria-label", titulo);
-      el.style.left = el.style.top = "";
+      clearTimeout(saida);
+      el.classList.add("chegando");
       el.hidden = false;
       atualizar();
+      medir();
+    },
+    /** Entra deslizando (quando o objeto termina de chegar na frente da tela). */
+    revelar() {
+      if (!el.hidden) el.classList.remove("chegando");
+    },
+    get revelado() {
+      return !el.hidden && !el.classList.contains("chegando");
     },
     esconder() {
-      el.hidden = true;
       id = null;
+      el.classList.add("chegando");
+      clearTimeout(saida);
+      saida = setTimeout(() => {
+        el.hidden = true;
+        el.style.left = el.style.top = "";
+        ultimo = "";
+      }, 260);
     },
+    get visivel() {
+      return !el.hidden && id !== null;
+    },
+    medidas,
     /**
      * Põe o painel ao lado do sensor na tela (à direita; se não couber, à esquerda). `tela` vem de
      * enquadrarAoLado; `escala` = zoom aplicado ao sensor. No celular o painel fica preso embaixo (CSS).
      */
     posicionar(tela, escala = 1) {
-      if (!tela || el.hidden) return;
+      if (!tela || el.hidden || id === null) return;
       if (celular()) {
-        el.style.left = el.style.top = "";
+        if (ultimo) el.style.left = el.style.top = ultimo = "";
         return;
       }
-      const w = el.offsetWidth;
-      const h = el.offsetHeight;
+      const { largura: w, altura: h } = medidas;
       const r = tela.raioPx * escala;
       let left = tela.cx + r + VAO;
       if (left + w > window.innerWidth - 8) left = Math.max(8, tela.cx - r - VAO - w);
-      const topo = (document.querySelector(".topo")?.getBoundingClientRect().bottom ?? 0) + 8;
-      const top = Math.max(topo, Math.min(window.innerHeight - h - 8, tela.cy - h / 2));
+      const top = Math.max(medidas.topoLivre + 8, Math.min(window.innerHeight - h - 8, tela.cy - h / 2));
+      const pos = `${Math.round(left)}|${Math.round(top)}`;
+      if (pos === ultimo) return; // só mexe no estilo quando muda
+      ultimo = pos;
       el.style.left = `${Math.round(left)}px`;
       el.style.top = `${Math.round(top)}px`;
     },
@@ -147,9 +182,8 @@ export function enquadrarAoLado({ scene, camera, raio, painel }) {
     return { centro: Vector3.TransformCoordinates(c, inversa), c, d: 0.45, inversa, direita, cima, paraCamera, tela: null };
   }
   const engine = scene.getEngine();
-  const ret = engine.getRenderingCanvas().getBoundingClientRect();
-  const cw = ret.width;
-  const ch = ret.height;
+  const cw = window.innerWidth; // o canvas ocupa a janela inteira (#cena é fixo)
+  const ch = window.innerHeight;
   const aspecto = engine.getAspectRatio(cam);
   const t = Math.tan(cam.fov / 2);
   const tanV = cam.fovMode === Camera.FOVMODE_HORIZONTAL_FIXED ? t / aspecto : t;
@@ -163,16 +197,16 @@ export function enquadrarAoLado({ scene, camera, raio, painel }) {
     cy = (ch / 2) * (1 - alvo.y / -alvo.z / tanV);
   }
   let diametro = Math.min(0.58 * ch, 0.42 * cw);
-  if (painel && !painel.el.hidden) {
-    const r = painel.el.getBoundingClientRect();
+  if (painel?.visivel) {
+    const m = painel.medidas;
     if (celular()) {
-      const topo = (document.querySelector(".topo")?.getBoundingClientRect().bottom ?? 0) - ret.top;
-      const base = r.top - ret.top;
+      const topo = m.topoLivre;
+      const base = ch - m.baseInferior - m.altura; // topo do painel, preso embaixo
       cx = cw / 2;
       cy = (topo + base) / 2;
       diametro = Math.max(80, Math.min(0.85 * (base - topo), 0.8 * cw));
     } else {
-      cx -= (r.width + VAO) / 2;
+      cx -= (m.largura + VAO) / 2;
     }
   }
   const d = (raio * ch) / (diametro * tanV); // o raio do objeto ocupa diametro / 2 px
@@ -185,6 +219,8 @@ export function enquadrarAoLado({ scene, camera, raio, painel }) {
     direita,
     cima,
     paraCamera,
-    tela: { cx: cx + ret.left, cy: cy + ret.top, raioPx: diametro / 2 },
+    tanV,
+    tanH,
+    tela: { cx, cy, raioPx: diametro / 2 },
   };
 }

@@ -1,27 +1,19 @@
-import {
-  Color3,
-  HemisphericLight,
-  Matrix,
-  MeshBuilder,
-  PickingInfo,
-  PointerEventTypes,
-  Quaternion,
-  StandardMaterial,
-  TransformNode,
-  Vector3,
-} from "@babylonjs/core";
+import { Color3, HemisphericLight, Matrix, PickingInfo, Quaternion, TransformNode, Vector3 } from "@babylonjs/core";
 import { criarPainelMedida, enquadrarAoLado } from "../ui/painelMedida.js";
+import { criarDestaque, curvas, pontoDoVoo } from "./destaque.js";
 import { criarEmissor } from "../util/emissor.js";
 
 // Vista de perto de um sensor dos compartimentos (velocidade, ultrassônico, corrente), como a da caixa de
 // monitoramento: clicar no balão (ou no sensor) traz só o sensor para a frente da tela, com o resto escurecido
 // e o painel com os dados da medição ao lado. Quem vem para a frente é uma cópia das peças do sensor (o
-// original fica no lugar, com o cabo), que sai do ponto onde ele está na máquina. Arrastar gira, a roda
-// aproxima, e Esc, um clique fora ou o × do painel o devolvem.
+// original fica no lugar, com o cabo): ela sai do ponto onde ele está na máquina, sobe num arco dando uma volta
+// em torno de si, chega com um leve pulo e uma onda de luz (destaque.js), enquanto a cena de trás se aproxima e
+// escurece. Arrastar gira (com inércia), a roda aproxima, e Esc, um clique fora ou o × do painel o devolvem.
 
-const DURACAO_ABRIR = 0.8; // s
-const DURACAO_FECHAR = 0.6;
+const DURACAO_ABRIR = 1.0; // s
+const DURACAO_FECHAR = 0.65;
 const GIRO_PADRAO = [0.3, -0.45]; // inclinação inicial (rad): em torno do eixo horizontal e do vertical da tela
+const PULO = 0.07; // o sensor cresce 7% e volta, ao chegar
 
 /**
  * Chamar depois de criarSelecao. `mostrar(peca)` recebe a descrição do sensor (compartimentos.pecaDoSensor):
@@ -34,21 +26,7 @@ export function criarVitrineSensor({ scene, camera, selecao, fluxo, config }) {
   const engine = scene.getEngine();
   const canvas = engine.getRenderingCanvas();
 
-  // fundo escurecido atrás do sensor; clicar nele fecha
-  const fundo = MeshBuilder.CreatePlane("vitrineSensor_fundo", { size: 1 }, scene);
-  const matFundo = new StandardMaterial("matVitrineSensor_fundo", scene);
-  matFundo.diffuseColor = Color3.Black();
-  matFundo.specularColor = Color3.Black();
-  matFundo.disableLighting = true;
-  matFundo.backFaceCulling = false;
-  matFundo.alpha = 0;
-  fundo.material = matFundo;
-  fundo.renderingGroupId = 2;
-  fundo.rotationQuaternion = Quaternion.Identity();
-  fundo.enablePointerMoveEvents = true;
-  fundo.setEnabled(false);
-  selecao.registrarClicavel(fundo, () => fechar(), null);
-
+  const destaque = criarDestaque(scene, { nome: "vitrineSensor", camera, selecao, aoClicarFundo: () => fechar(), aoFechar: () => fechar() });
   const painel = criarPainelMedida({ fluxo, config, aoFechar: () => fechar() });
 
   // luz só das cópias, vinda do lado de quem olha (criada com a primeira cópia: sem malhas incluídas,
@@ -62,8 +40,6 @@ export function criarVitrineSensor({ scene, camera, selecao, fluxo, config }) {
   let alvo = 0;
   let kAplicado = 0;
   let cameraSolta = false;
-  const giro = [...GIRO_PADRAO];
-  let zoom = 1;
 
   /**
    * Cópia das peças: raiz (pose na tela) → alinhar (face aberta do compartimento para +Z, centro na origem)
@@ -150,7 +126,7 @@ export function criarVitrineSensor({ scene, camera, selecao, fluxo, config }) {
   function restringirCliques(sim) {
     if (sim && !predicados) {
       predicados = { down: scene.pointerDownPredicate, up: scene.pointerUpPredicate, move: scene.pointerMovePredicate };
-      const pode = (m) => m.isEnabled() && m.isVisible && (m === fundo || (atual?.malhas.includes(m) ?? false));
+      const pode = (m) => m.isEnabled() && m.isVisible && (m === destaque.fundo || (atual?.malhas.includes(m) ?? false));
       scene.pointerDownPredicate = pode;
       scene.pointerUpPredicate = pode;
       scene.pointerMovePredicate = pode;
@@ -165,6 +141,9 @@ export function criarVitrineSensor({ scene, camera, selecao, fluxo, config }) {
   // o ponteiro parado não gera "move": a dica do balão some quando o sensor vem para a frente e, na volta,
   // é refeita para o que ficou sob o ponteiro
   let tipoPonteiro = "";
+  scene.onPointerObservable.add((pi) => {
+    tipoPonteiro = pi.event.pointerType ?? tipoPonteiro; // a roda (WheelEvent) não tem tipo
+  });
   function refazerDica(repicar) {
     if (tipoPonteiro !== "mouse" && tipoPonteiro !== "pen") return;
     const init = { pointerType: tipoPonteiro };
@@ -182,8 +161,7 @@ export function criarVitrineSensor({ scene, camera, selecao, fluxo, config }) {
     if (!montagens.has(peca.id)) montagens.set(peca.id, montar(peca));
     atual = montagens.get(peca.id);
     alvo = 1;
-    giro.splice(0, 2, ...(peca.vista ?? GIRO_PADRAO));
-    zoom = 1;
+    destaque.ativar(true, peca.vista ?? GIRO_PADRAO);
     // a câmera orbital fica parada; arrastar passa a girar o sensor
     if (!cameraSolta && scene.activeCamera === camera && camera.inputs.attachedToElement) {
       camera.inertialAlphaOffset = camera.inertialBetaOffset = camera.inertialRadiusOffset = 0;
@@ -204,103 +182,69 @@ export function criarVitrineSensor({ scene, camera, selecao, fluxo, config }) {
       camera.attachControl(canvas, true); // como em cena.js
       cameraSolta = false;
     }
-    arrasto = null;
+    destaque.ativar(false);
     restringirCliques(false);
     painel.esconder();
     refazerDica(false);
     eventos.emitir("estado", false);
   }
 
-  // ---------- arrastar gira o sensor, a roda aproxima (só com ele na frente da tela)
-  let arrasto = null;
-  scene.onPointerObservable.add((pi) => {
-    tipoPonteiro = pi.event.pointerType ?? tipoPonteiro; // a roda (WheelEvent) não tem tipo
-    if (alvo !== 1) return;
-    const e = pi.event;
-    if (pi.type === PointerEventTypes.POINTERDOWN) {
-      arrasto = { id: e.pointerId, x: e.clientX, y: e.clientY };
-    } else if (pi.type === PointerEventTypes.POINTERMOVE && arrasto && e.pointerId === arrasto.id) {
-      giro[1] += (e.clientX - arrasto.x) * 0.008;
-      giro[0] = Math.max(-1.4, Math.min(1.4, giro[0] + (e.clientY - arrasto.y) * 0.008));
-      arrasto.x = e.clientX;
-      arrasto.y = e.clientY;
-    } else if (pi.type === PointerEventTypes.POINTERUP) {
-      arrasto = null;
-    }
-  });
-  canvas.addEventListener(
-    "wheel",
-    (e) => {
-      if (alvo === 1) zoom = Math.max(0.6, Math.min(2.6, zoom * Math.exp(-e.deltaY * 0.0012)));
-    },
-    { passive: true },
-  );
-  // Esc devolve o sensor antes de recolher painéis ou sair da apresentação
-  window.addEventListener(
-    "keydown",
-    (e) => {
-      if (e.key !== "Escape" || alvo !== 1 || document.querySelector("dialog[open]")) return;
-      fechar();
-      e.preventDefault();
-      e.stopImmediatePropagation();
-    },
-    true,
-  );
-
-  // ---------- pose na frente da tela, recalculada a cada quadro (acompanha a câmera e o painel)
-  const suave = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
-
-  function poseNaTela() {
-    const q = enquadrarAoLado({ scene, camera, raio: atual.raio, painel });
-    // face aberta do compartimento para quem olha, em pé; depois o giro do arrasto
-    const r = Matrix.RotationAxis(q.direita, giro[0]).multiply(Matrix.RotationAxis(q.cima, giro[1]));
-    const rotacao = Quaternion.RotationQuaternionFromAxis(
-      Vector3.TransformNormal(q.direita, r),
-      Vector3.TransformNormal(q.cima, r),
-      Vector3.TransformNormal(q.paraCamera, r),
-    );
-    // fundo: logo atrás do sensor, cobrindo a vista inteira
-    const df = q.d + atual.raio * zoom * 1.5 + 0.05;
-    fundo.position.copyFrom(Vector3.TransformCoordinates(q.c.scale(df / q.d), q.inversa));
-    fundo.rotationQuaternion = Quaternion.RotationQuaternionFromAxis(q.direita, q.cima, q.paraCamera);
-    fundo.scaling.setAll(df * 8);
-    luz.direction.copyFrom(q.paraCamera);
-    return { posicao: q.centro, rotacao, tela: q.tela };
-  }
+  // ---------- pose a cada quadro: voo em arco do lugar no torno até a frente da tela (acompanha a câmera)
+  const tmp = { q: new Quaternion() };
 
   scene.onBeforeRenderObservable.add(() => {
     if (!atual) return;
+    const dt = Math.min(0.1, engine.getDeltaTime() / 1000);
     if (k !== alvo) {
-      const dt = Math.min(0.1, engine.getDeltaTime() / 1000);
       k = alvo ? Math.min(1, k + dt / DURACAO_ABRIR) : Math.max(0, k - dt / DURACAO_FECHAR);
       if (k === alvo) refazerDica(true);
     }
     if (k === 0) {
       if (kAplicado !== 0) {
         atual.raiz.setEnabled(false);
-        fundo.setEnabled(false);
         luz.intensity = 0;
+        destaque.atualizar({ k: 0 });
         kAplicado = 0;
       }
       return;
     }
     kAplicado = k;
+    destaque.passo(dt);
     atual.raiz.setEnabled(true);
-    fundo.setEnabled(true);
     // a roda dentada da cópia gira junto com a de verdade
     for (const [original, copia] of atual.nos) {
       copia.rotation.copyFrom(original.rotation);
       if (original.rotationQuaternion) copia.rotationQuaternion.copyFrom(original.rotationQuaternion);
     }
-    const kVoo = suave(k);
-    const p = poseNaTela();
-    Vector3.LerpToRef(atual.repouso.posicao, p.posicao, kVoo, atual.raiz.position);
-    Quaternion.SlerpToRef(atual.repouso.rotacao, p.rotacao, kVoo, atual.raiz.rotationQuaternion);
-    atual.raiz.scaling.setAll(1 + (zoom - 1) * kVoo);
-    matFundo.alpha = 0.55 * kVoo;
-    fundo.isPickable = alvo === 1;
+
+    const kVoo = curvas.suave(k);
+    const zoom = destaque.zoom;
+    const q = enquadrarAoLado({ scene, camera, raio: atual.raio, painel });
+    const [inclinacao, voltas] = destaque.giro;
+    // face aberta do compartimento para quem olha, em pé; depois o giro do arrasto
+    const r = Matrix.RotationAxis(q.direita, inclinacao).multiply(Matrix.RotationAxis(q.cima, voltas));
+    const final = Quaternion.RotationQuaternionFromAxis(
+      Vector3.TransformNormal(q.direita, r),
+      Vector3.TransformNormal(q.cima, r),
+      Vector3.TransformNormal(q.paraCamera, r),
+    );
+
+    // posição: em arco, crescendo por igual na tela até a pose final
+    pontoDoVoo(scene.activeCamera.globalPosition, atual.repouso.posicao, q.centro, kVoo, q, atual.raiz.position);
+
+    // rotação: do jeito que está no torno até a pose na tela, dando uma volta em torno do eixo vertical
+    Quaternion.SlerpToRef(atual.repouso.rotacao, final, kVoo, tmp.q);
+    Quaternion.RotationAxis(q.cima, 2 * Math.PI * (kVoo - 1)).multiplyToRef(tmp.q, atual.raiz.rotationQuaternion);
+
+    const pulo = alvo === 1 ? 1 + PULO * curvas.pulo(k, 0.62) : 1;
+    atual.raiz.scaling.setAll((1 + (zoom - 1) * kVoo) * pulo);
+    luz.direction.copyFrom(q.paraCamera);
     luz.intensity = 0.45 * kVoo;
-    if (alvo === 1) painel.posicionar(p.tela, zoom);
+    destaque.atualizar({ q, raio: atual.raio * zoom, k: kVoo, abrindo: alvo === 1 });
+    if (alvo === 1) {
+      painel.posicionar(q.tela, zoom);
+      if (k > 0.8) painel.revelar();
+    }
   });
 
   return {
