@@ -84,6 +84,7 @@ async function iniciar() {
     config,
     focar,
     aoAbrirGrandeza: (id) => abrirGrandeza(id, { focarCamera: false }),
+    placa, // a roda do sensor de velocidade gira com o eixo-árvore
   });
   // caixa do sistema de monitoramento no tampo do cabeçote: clicar traz para a frente da tela, aberta
   const caixa = criarCaixaMonitoramento({ scene, camera, selecao, fluxo, config });

@@ -62,14 +62,16 @@ export const COMPARTIMENTOS = [
         rota: [[-1.375, 1.235, 0.045], [-1.368, 1.246, 0.045], [-1.362, 1.258, 0.045]],
       },
       { grandeza: "vibracao", tipo: "acelerometro", pos: [-0.055, 1.215], etiqueta: [-0.1, 0.08], rota: [[-1.36, 1.258, -0.055]] },
-      // encoder rotativo acoplado na ponta do eixo-árvore (centro do ressalto); o cabo sobe entre os outros dois
+      // sensor de velocidade óptico (módulo LM393 com chave de fenda) em cima da roda dentada presa na ponta do
+      // eixo-árvore (`pos` = centro do eixo); o cabo sai pelo conector do lado da fundição, passa ao lado da
+      // cantoneira e sobe entre os outros dois sensores até a canaleta
       {
         grandeza: "rotacao",
-        tipo: "encoder",
-        nome: "Encoder (rotação)",
+        tipo: "velocidade",
+        nome: "Sensor de velocidade",
         pos: [0, 1.132],
-        etiqueta: [0.02, -0.105],
-        rota: [[-1.403, 1.2, 0], [-1.396, 1.228, 0], [-1.376, 1.241, 0], [-1.362, 1.246, 0], [-1.358, 1.258, 0]],
+        etiqueta: [0.13, -0.06],
+        rota: [[-1.3405, 1.1912, 0.006], [-1.341, 1.1965, 0.0135], [-1.342, 1.215, 0.0145], [-1.344, 1.238, 0.0145], [-1.348, 1.258, 0.0145]],
       },
       // HC-SR04 na tampa do reservatório cilíndrico, transdutores voltados para baixo medindo a distância até
       // o óleo; `pos` = centro da placa (y = base + altura do reservatório + 0,015). O cabo passa por baixo
@@ -165,7 +167,7 @@ export function separarTampas(modelo) {
  * etiqueta na cor do estado da medição; clicar num sensor abre a medição dele.
  * Chamar depois de prepararMalhas (que congela as peças fixas). Emite "estado" (alguma tampa aberta).
  */
-export function criarCompartimentos({ scene, camera, selecao, tampas, fluxo, config, focar, aoAbrirGrandeza }) {
+export function criarCompartimentos({ scene, camera, selecao, tampas, fluxo, config, focar, aoAbrirGrandeza, placa }) {
   const eventos = criarEmissor();
   const botao = document.getElementById("btn-sensores");
   botao?.insertAdjacentHTML("afterbegin", svgIcone("porta"));
@@ -287,6 +289,8 @@ export function criarCompartimentos({ scene, camera, selecao, tampas, fluxo, con
       c.interior.sensoresRaiz.setEnabled(c.k > 0.3);
       for (const m of c.interior.extras) m.setEnabled(c.k > 0);
     }
+    // a roda dentada do sensor de velocidade está no mesmo eixo-árvore da placa: gira junto com ela
+    for (const s of sensores) if (s.roda) s.roda.rotation.x = placa?.angulo ?? 0;
   });
 
   // ---------- estado das medições nos sensores (LED e etiqueta)
@@ -439,6 +443,18 @@ function plastico(scene, hex) {
   }
   return coresCache.get(chave);
 }
+/** Metal (PBR) iluminado pelo ambiente, para peças usinadas que ficam viradas para longe do sol. */
+function metalPBR(scene, hex, rugosidade) {
+  const chave = `metal|${hex}|${rugosidade}`;
+  if (!coresCache.has(chave)) {
+    const m = new PBRMaterial(`metal_${hex}`, scene);
+    m.albedoColor = Color3.FromHexString(hex).toLinearSpace();
+    m.metallic = 1;
+    m.roughness = rugosidade;
+    coresCache.set(chave, m);
+  }
+  return coresCache.get(chave);
+}
 function cor(scene, hex, especular = 0.25) {
   const chave = `${hex}|${especular}`;
   if (!coresCache.has(chave)) {
@@ -476,6 +492,7 @@ function criarSensor(scene, raiz, c, s) {
   let ponta = new Vector3(x - 0.04, y, z); // onde fica o LED
   let saidaCabo = null; // de onde o cabo do sensor sai (o resto do cabo é do chicote)
   let fases = null;
+  let rodaGirando = null; // nó que gira com o eixo-árvore (roda dentada do sensor de velocidade)
   if (s.tipo === "termometro") {
     saindo("sensorTemp", 0.026, 0.012, metal, 6);
     saindo("sensorTemp", 0.016, 0.034, cor(scene, "#d9dde2", 0.5), 20, 0.012);
@@ -545,18 +562,92 @@ function criarSensor(scene, raiz, c, s) {
     prensa.position.set(xFrente - 0.0025, y - 0.004, z);
     saidaCabo = new Vector3(xFrente - 0.004, y - 0.004, z);
     ponta = new Vector3(xFrente + 0.004, y + T / 2 + 0.004, z + W / 2 - 0.005);
-  } else if (s.tipo === "encoder") {
-    // encoder de eixo (tipo E40S): acoplamento na ponta do eixo-árvore (x = -1,378), flange de alumínio
-    // e corpo preto voltados para fora, plaqueta na tampa de trás e o cabo saindo por cima, para a canaleta
-    saindo("sensorEncoder", 0.014, 0.008, escuro, 20, 0.043);
-    saindo("sensorEncoder", 0.04, 0.006, cor(scene, "#d4d8dd", 0.7), 32, 0.051);
-    const corpo = saindo("sensorEncoder", 0.04, 0.022, cor(scene, "#1c1f23", 0.35), 32, 0.057);
-    const plaqueta = peca(MeshBuilder.CreateBox("sensorEncoder", { width: 0.0015, height: 0.009, depth: 0.022 }, scene), cor(scene, "#eceff2", 0.2));
-    plaqueta.position.set(x - 0.0795, y - 0.0115, z);
-    const prensaCabo = peca(MeshBuilder.CreateCylinder("sensorEncoder", { diameter: 0.009, height: 0.008, tessellation: 12 }, scene), escuro);
-    prensaCabo.position.set(corpo.position.x, y + 0.023, z);
-    saidaCabo = new Vector3(corpo.position.x, y + 0.026, z);
-    ponta = new Vector3(x - 0.08, y, z);
+  } else if (s.tipo === "velocidade") {
+    // Sensor de velocidade óptico (módulo LM393 com a chave de fenda MOCH22A) lendo uma roda dentada de 20
+    // dentes presa na ponta do eixo-árvore (x = -1,378, ressalto de Ø 80 mm): cada dente passa pela fenda do
+    // garfo e corta o feixe infravermelho (20 pulsos por volta). A roda gira com o eixo (`roda`). A placa fica
+    // deitada em cima da roda, com o garfo virado para baixo e os componentes para a roda, presa por uma
+    // cantoneira no parafuso de cima do flange; a barra de pinos (90°) e o conector ficam do lado da fundição.
+    const R = 0.055; // raio externo da roda (passa da borda do ressalto, onde o garfo encaixa)
+    const pe = 0.0485; // raio do pé dos dentes
+    const E = 0.0015; // espessura da roda
+    const xr = x - 0.043 - 0.006 - E / 2; // plano da roda, na frente do cubo de 6 mm
+    const aluminio = metalPBR(scene, "#c9ced4", 0.35); // usinado: reflete o ambiente mesmo virado para a porta
+    const pretoFosco = cor(scene, "#17191c", 0.15);
+    const caixa = (w, h, d, material, px, py, pz) => {
+      const m = peca(MeshBuilder.CreateBox("sensorVelocidade", { width: w, height: h, depth: d }, scene), material);
+      m.position.set(px, py, pz);
+      return m;
+    };
+    // ---- parte que gira, montada em volta do eixo X local de `roda` (centro no plano da roda)
+    const roda = new TransformNode("rodaSensorVelocidade", scene);
+    roda.parent = raiz;
+    roda.position.set(xr, y, z);
+    const girando = (malha, material, px, py = 0, pz = 0) => {
+      peca(malha, material).parent = roda;
+      malha.position.set(px, py, pz);
+      return malha;
+    };
+    const deitado = (d, h, lados) => {
+      const m = MeshBuilder.CreateCylinder("sensorVelocidade", { diameter: d, height: h, tessellation: lados }, scene);
+      m.rotation.z = Math.PI / 2;
+      return m;
+    };
+    const DENTES = 20;
+    const largura = (Math.PI * (R + pe)) / DENTES / 2; // dente e vão com a mesma largura no meio do dente
+    const partes = [deitado(2 * pe, E, 64)];
+    for (let i = 0; i < DENTES; i++) {
+      const a = (i / DENTES) * 2 * Math.PI;
+      const dente = MeshBuilder.CreateBox("sensorVelocidade", { width: E, height: R - pe + 0.001, depth: largura }, scene);
+      const r = (R + pe - 0.001) / 2;
+      dente.rotation.x = a; // Y local (comprimento do dente) → radial
+      dente.position.set(0, r * Math.cos(a), r * Math.sin(a));
+      partes.push(dente);
+    }
+    girando(Mesh.MergeMeshes(partes, true, true), aluminio, 0);
+    girando(deitado(0.032, 0.006, 32), aluminio, E / 2 + 0.003); // cubo entre o eixo e a roda
+    girando(deitado(0.022, 0.0025, 32), metal, -E / 2 - 0.00125); // arruela de aperto
+    girando(deitado(0.009, 0.004, 6), escuro, -E / 2 - 0.0045); // parafuso central
+    for (let i = 0; i < 4; i++) {
+      const a = Math.PI / 4 + (i * Math.PI) / 2;
+      girando(deitado(0.005, 0.0015, 12), escuro, -E / 2 - 0.00075, 0.031 * Math.cos(a), 0.031 * Math.sin(a));
+    }
+
+    // ---- módulo, parado: garfo embaixo da placa, abraçando os dentes do alto da roda
+    const yB = y + R + 0.0015; // fundo da fenda (1,5 mm de folga sobre os dentes)
+    const yP = yB + 0.0033; // face de baixo da placa (lado dos componentes)
+    caixa(0.0124, 0.0033, 0.0062, pretoFosco, xr, yB + 0.00165, z); // base do garfo
+    for (const lado of [-1, 1]) caixa(0.0037, 0.0075, 0.0062, pretoFosco, xr + lado * 0.00435, yB - 0.00375, z); // braços (fenda de 5 mm)
+    const u = (mm) => xr - 0.0075 + mm / 1000; // ao longo da placa, a partir da ponta do lado do garfo
+    caixa(0.032, 0.0016, 0.014, cor(scene, "#2468b4", 0.35), u(16), yP + 0.0008, z); // placa de 32 × 14 mm
+    caixa(0.005, 0.0015, 0.004, pretoFosco, u(18), yP - 0.00075, z); // LM393
+    for (const [mm, dz] of [[14.5, -0.0045], [14.5, 0.0045], [21.5, -0.0045], [21.5, 0.0045]]) {
+      caixa(0.002, 0.0006, 0.00125, escuro, u(mm), yP - 0.0003, z + dz); // resistores
+    }
+    const ledPlaca = new StandardMaterial("ledPwrSensorVelocidade", scene); // PWR aceso
+    ledPlaca.emissiveColor = Color3.FromHexString("#ff3b30");
+    ledPlaca.disableLighting = true;
+    caixa(0.002, 0.0008, 0.00125, ledPlaca, u(27.5), yP - 0.0004, z - 0.0045);
+    caixa(0.002, 0.0008, 0.00125, cor(scene, "#dfe3e8", 0.5), u(27.5), yP - 0.0004, z + 0.0045); // OUT
+    // barra de pinos de 90° (VCC, GND, D0, A0) e o conector do cabo
+    const yPinos = yP - 0.00125;
+    caixa(0.0025, 0.0025, 0.0102, pretoFosco, u(31.25), yPinos, z);
+    for (const dz of [-0.00381, -0.00127, 0.00127, 0.00381]) caixa(0.006, 0.0006, 0.0006, cor(scene, "#d8b45a", 0.7), u(35), yPinos, z + dz);
+    caixa(0.012, 0.0026, 0.0104, pretoFosco, u(42), yPinos, z);
+    saidaCabo = new Vector3(u(48), yPinos, z);
+    // cantoneira de alumínio: espaçador sextavado no furo da placa, braço por cima até a fundição e aba
+    // presa pelo parafuso de cima do flange do eixo-árvore (o do torno.glb, que fica na frente da aba)
+    const cantoneira = metalPBR(scene, "#b4bac1", 0.5);
+    const yBraco = yP + 0.0016 + 0.004; // 4 mm de espaçador acima da placa
+    const espacador = peca(MeshBuilder.CreateCylinder("sensorVelocidade", { diameter: 0.005, height: 0.004, tessellation: 6 }, scene), metal);
+    espacador.position.set(u(24), yBraco - 0.002, z);
+    const fimBraco = x - 0.0027; // frente da aba
+    caixa(fimBraco - u(20), 0.002, 0.01, cantoneira, (u(20) + fimBraco) / 2, yBraco + 0.001, z);
+    caixa(0.0025, 0.0346, 0.016, cantoneira, x - 0.00145, yBraco + 0.0173, z);
+    const cabeca = peca(MeshBuilder.CreateCylinder("sensorVelocidade", { diameter: 0.0055, height: 0.0018, tessellation: 12 }, scene), escuro);
+    cabeca.position.set(u(24), yBraco + 0.0029, z);
+    ponta = new Vector3(xr - 0.004, yP + 0.006, z); // em cima da placa, sobre o garfo (sem escondê-lo)
+    rodaGirando = roda;
   } else if (s.tipo === "ultrassonico") {
     // HC-SR04 deitado na tampa do reservatório: placa azul na horizontal sobre quatro espaçadores, os dois
     // transdutores atravessando a tampa e apontando para o óleo, e o conector do cabo
@@ -621,6 +712,7 @@ function criarSensor(scene, raiz, c, s) {
     // para o chicote, em coordenadas do mundo (o interior pode estar girado)
     saidaCabo: saidaCabo && paraMundo(c, saidaCabo),
     fases: fases?.map((f) => paraMundo(c, f)),
+    roda: rodaGirando,
     rota: s.rota,
     raioCabo: s.raioCabo,
     atualizar(estado, tv) {

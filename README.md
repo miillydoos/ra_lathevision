@@ -33,7 +33,7 @@ npm run dev          # http://localhost:5173
 
 | Etapa | Entrega | Arquivos principais |
 |---|---|---|
-| 1. Base 3D | GLB carregado (15 conjuntos, pivôs originais), identificação de componentes por clique/lista, pontos instrumentados com rótulos, visor de óleo virtual, placa girando, RV/RA com painel 3D. Malhas mescladas por componente e material (547 → 114) para o headset. | `src/cena/*`, `src/xr/*`, `src/config/componentes.js`, `src/config/grandezas.js` |
+| 1. Base 3D | GLB carregado (15 conjuntos, pivôs originais), identificação de componentes por clique/lista, pontos instrumentados com rótulos, placa girando, RV/RA com painel 3D. Malhas mescladas por componente e material (547 → 114) para o headset. | `src/cena/*`, `src/xr/*`, `src/config/componentes.js`, `src/config/grandezas.js` |
 | 2. Indicadores | Estados Normal / Atenção / Alarme / Sem dados (cor + ícone + texto), cartões com minigráfico, detalhe com limites, estatísticas, cuidados de interpretação e tabela; comparação em pequenos múltiplos; indicador de conexão. | `src/dados/fluxo.js`, `src/ui/sensoresUI.js`, `src/ui/graficos.js`, `public/config.json` |
 | 3. Fontes de dados | WebSocket direto no IP do ESP32 ou MQTT sobre WebSocket, modelo de simulação, painel do professor, configurações (broker, limites, tipo de sensor de nível). | `src/fontes/*`, `src/simulacao/*`, `src/ui/painelSimulacao.js`, `src/ui/configuracoesUI.js` |
 | 4. Registro e replay | Gravação de sessões (IndexedDB + download .json), quatro sessões de exemplo, reprodução sincronizada com o modelo, marcadores do aluno. | `src/dados/gravador.js`, `src/fontes/fonteReplay.js`, `src/ui/painelReplay.js`, `public/sessoes/` |

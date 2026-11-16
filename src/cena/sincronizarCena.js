@@ -3,7 +3,8 @@ import { RPM_LIMITE_ANIMACAO } from "./placa.js";
 import { textoIdade, textoValor } from "../ui/sensoresUI.js";
 
 /**
- * Leva o estado das medições para o modelo 3D: rótulos dos sensores, giro da placa e visor de óleo.
+ * Leva o estado das medições para o modelo 3D: rótulos dos sensores e giro da placa.
+ * (O nível de óleo aparece no reservatório da caixa de engrenagens: compartimentos.js.)
  */
 export function sincronizarCena({ fluxo, config, pontos, placa }) {
   function atualizar() {
@@ -18,10 +19,6 @@ export function sincronizarCena({ fluxo, config, pontos, placa }) {
       pontos.atualizar(g.id, { valor: e.valor, estado: e.estado, texto: boia ? tv.valor : undefined, nota });
 
       if (g.id === "rotacao") placa.definirRpm(e.estado === "semDados" ? 0 : e.valor ?? 0);
-      if (g.id === "oleo") {
-        if (e.estado === "semDados") pontos.nivelVisor(null);
-        else pontos.nivelVisor(boia ? (e.valor >= 0.5 ? 0.8 : 0.15) : e.valor / 100);
-      }
     }
   }
   const intervalo = setInterval(atualizar, 250);

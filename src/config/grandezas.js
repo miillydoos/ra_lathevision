@@ -26,7 +26,7 @@ export const GRANDEZAS = [
     icone: "gota",
     componente: "cabecote",
     local: "Reservatório do cabeçote (banho de óleo)",
-    representacao: "Visor virtual associado ao reservatório monitorado.",
+    representacao: "Reservatório na caixa lateral de engrenagens, com o óleo acompanhando a medição.",
     cuidado:
       "Exibir porcentagem somente se o sensor permitir medição contínua; com boia, mostrar apenas os estados disponíveis.",
     marcador: [-0.704, 0.8, 0.2],

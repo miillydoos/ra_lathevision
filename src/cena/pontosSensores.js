@@ -58,9 +58,6 @@ export function criarPontosSensores(scene, { selecao, aoAbrirGrandeza }) {
     atualizar(id, dados) {
       pontos.get(id)?.desenhar(dados);
     },
-    nivelVisor(fracao, cor) {
-      pontos.get("oleo")?.visor?.definirNivel(fracao, cor);
-    },
     mostrarRotulos(visivel) {
       for (const p of pontos.values()) {
         p.rotulo.setEnabled(visivel);
@@ -127,7 +124,6 @@ function criarPonto(scene, g, raiz) {
     escala: 1,
     estado: "semDados",
     refazerLinha,
-    visor: null,
     desenhar: null,
     aplicarEscala(s, forcar = false) {
       if (!forcar && Math.abs(s - ponto.escala) < 0.01) return;
@@ -138,8 +134,6 @@ function criarPonto(scene, g, raiz) {
   };
   refazerLinha();
   ponto.aplicarEscala(1, true);
-
-  if (g.id === "oleo") ponto.visor = criarVisorOleo(scene, posMarcador, raiz);
 
   ponto.desenhar = (dados) => {
     const estado = ESTADOS[dados.estado] ?? ESTADOS.semDados;
@@ -204,63 +198,4 @@ function desenharRotulo(ctx, g, dados, estado) {
     ctx.textAlign = "right";
     ctx.fillText(dados.nota, xTexto, 160);
   }
-}
-
-/** Visor de nível virtual: tubo transparente com o óleo subindo ou descendo. */
-function criarVisorOleo(scene, pos, raiz) {
-  const altura = 0.1;
-  const diametro = 0.026;
-  const base = new TransformNode("visorOleo", scene);
-  base.parent = raiz;
-  // fica saliente na face do cabeçote voltada para a placa (+X)
-  base.position.set(pos.x + 0.018, pos.y, pos.z);
-
-  const moldura = MeshBuilder.CreateBox("molduraVisor", { width: 0.012, height: altura + 0.024, depth: diametro + 0.02 }, scene);
-  moldura.parent = base;
-  moldura.position.x = -0.008;
-  const matMoldura = new StandardMaterial("matMolduraVisor", scene);
-  matMoldura.diffuseColor = new Color3(0.12, 0.13, 0.15);
-  matMoldura.specularColor = new Color3(0.3, 0.3, 0.3);
-  moldura.material = matMoldura;
-
-  const tubo = MeshBuilder.CreateCylinder("tuboVisor", { height: altura, diameter: diametro, tessellation: 20 }, scene);
-  tubo.parent = base;
-  const matTubo = new StandardMaterial("matTuboVisor", scene);
-  matTubo.diffuseColor = new Color3(0.8, 0.9, 1);
-  matTubo.alpha = 0.22;
-  matTubo.specularPower = 64;
-  tubo.material = matTubo;
-
-  const oleo = MeshBuilder.CreateCylinder("oleoVisor", { height: 1, diameter: diametro * 0.8, tessellation: 20 }, scene);
-  oleo.parent = base;
-  const matOleo = new StandardMaterial("matOleoVisor", scene);
-  matOleo.diffuseColor = new Color3(0.85, 0.55, 0.08);
-  matOleo.emissiveColor = new Color3(0.35, 0.2, 0.02);
-  oleo.material = matOleo;
-
-  // marcas de mínimo e máximo
-  for (const [nome, frac, cor] of [["min", 0.2, new Color3(0.9, 0.3, 0.3)], ["max", 0.9, new Color3(0.3, 0.8, 0.45)]]) {
-    const marca = MeshBuilder.CreateBox(`marca_${nome}`, { width: 0.004, height: 0.0025, depth: diametro + 0.012 }, scene);
-    marca.parent = base;
-    marca.position.set(0.002, -altura / 2 + altura * frac, 0);
-    const m = new StandardMaterial(`matMarca_${nome}`, scene);
-    m.emissiveColor = cor;
-    m.disableLighting = true;
-    marca.material = m;
-  }
-
-  for (const m of [moldura, tubo, oleo]) m.isPickable = false;
-
-  function definirNivel(fracao, cor) {
-    const f = Math.max(0.001, Math.min(1, fracao ?? 0));
-    oleo.scaling.y = altura * f;
-    oleo.position.y = -altura / 2 + (altura * f) / 2;
-    oleo.setEnabled(fracao !== null && fracao !== undefined);
-    if (cor) {
-      matOleo.diffuseColor = Color3.FromHexString(cor);
-      matOleo.emissiveColor = Color3.FromHexString(cor).scale(0.4);
-    }
-  }
-  definirNivel(null);
-  return { definirNivel };
 }

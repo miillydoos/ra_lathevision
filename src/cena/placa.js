@@ -32,6 +32,10 @@ export function criarAnimacaoPlaca(scene, noPlaca) {
     get rpm() {
       return rpm;
     },
+    /** Ângulo atual do eixo-árvore em torno de +X (rad), para peças que giram com ele. */
+    get angulo() {
+      return angulo * sentido;
+    },
     get ilustrativa() {
       return rpm > RPM_LIMITE_ANIMACAO;
     },
