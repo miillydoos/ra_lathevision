@@ -42,7 +42,7 @@ export const PARADAS_360 = [
     pino: [-1.2, 1.36, 0.05],
     camera: { alvo: [-0.9, 1.02, 0.1], alfa: FRENTE - 0.45, beta: 1.15, raio: 2.8 },
     descricao:
-      "Aloja o eixo-árvore e a caixa de velocidades, com engrenagens e eixos temperados em banho de óleo. É o conjunto mais instrumentado: os sensores de vibração, nível de óleo (ultrassônico) e velocidade (rotação) ficam na caixa lateral de engrenagens, atrás da tampa lateral.",
+      "Aloja o eixo-árvore e a caixa de velocidades, com engrenagens e eixos temperados em banho de óleo. É o conjunto mais instrumentado: os sensores de nível de óleo (ultrassônico) e de velocidade (rotação) ficam na caixa lateral de engrenagens, atrás da tampa lateral, e o de vibração (MPU-6050) fica na caixa de monitoramento, no tampo.",
     fatos: [
       ["Velocidades", "20 (39 a 2.000 rpm)"],
       ["Nariz do eixo-árvore", "ASA L0, passagem Ø 52 mm"],
@@ -180,10 +180,11 @@ export const PARADAS_360 = [
     medicoes: ["oleo", "corrente", "vibracao", "rotacao"],
     sensoresInternos: true,
     descricao:
-      "O sensor de corrente fica no painel elétrico; os de vibração, nível de óleo (ultrassônico) e velocidade (rotação), na caixa lateral de engrenagens. As leituras chegam de um ESP32 pela rede Wi-Fi (WebSocket direto no IP dele ou broker MQTT) e aparecem como Normal, Atenção, Alarme ou Sem dados. Sem sensores, a Simulação reproduz a operação.",
+      "O sensor de corrente fica no painel elétrico; os de nível de óleo (ultrassônico) e velocidade (rotação), na caixa lateral de engrenagens; o de vibração (MPU-6050), na caixa de monitoramento do tampo do cabeçote. Cada sensor tem um balão com a leitura. As leituras chegam de um ESP32 pela rede Wi-Fi (WebSocket direto no IP dele ou broker MQTT) e aparecem como Normal, Atenção, Alarme ou Sem dados. Sem sensores, a Simulação reproduz a operação.",
     fatos: [
       ["Painel elétrico", "Corrente"],
-      ["Caixa de engrenagens", "Vibração, óleo e rotação"],
+      ["Caixa de engrenagens", "Óleo e rotação"],
+      ["Caixa de monitoramento", "Vibração (MPU-6050)"],
       ["Comunicação", "ESP32 → WebSocket (IP) ou MQTT"],
       ["Modos", "Ao vivo, Simulação, Replay e Desafio"],
     ],

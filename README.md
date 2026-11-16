@@ -33,11 +33,11 @@ npm run dev          # http://localhost:5173
 
 | Etapa | Entrega | Arquivos principais |
 |---|---|---|
-| 1. Base 3D | GLB carregado (15 conjuntos, pivôs originais), identificação de componentes por clique/lista, pontos instrumentados com rótulos, placa girando, RV/RA com painel 3D. Malhas mescladas por componente e material (547 → 114) para o headset. | `src/cena/*`, `src/xr/*`, `src/config/componentes.js`, `src/config/grandezas.js` |
+| 1. Base 3D | GLB carregado (15 conjuntos, pivôs originais), identificação de componentes por clique/lista, etiquetas com as leituras nos próprios sensores, placa girando, RV/RA com painel 3D. Malhas mescladas por componente e material (547 → 114) para o headset. | `src/cena/*`, `src/xr/*`, `src/config/componentes.js`, `src/config/grandezas.js` |
 | 2. Indicadores | Estados Normal / Atenção / Alarme / Sem dados (cor + ícone + texto), cartões com minigráfico, detalhe com limites, estatísticas, cuidados de interpretação e tabela; comparação em pequenos múltiplos; indicador de conexão. | `src/dados/fluxo.js`, `src/ui/sensoresUI.js`, `src/ui/graficos.js`, `public/config.json` |
 | 3. Fontes de dados | WebSocket direto no IP do ESP32 ou MQTT sobre WebSocket, modelo de simulação, painel do professor, configurações (broker, limites, tipo de sensor de nível). | `src/fontes/*`, `src/simulacao/*`, `src/ui/painelSimulacao.js`, `src/ui/configuracoesUI.js` |
 | 4. Registro e replay | Gravação de sessões (IndexedDB + download .json), quatro sessões de exemplo, reprodução sincronizada com o modelo, marcadores do aluno. | `src/dados/gravador.js`, `src/fontes/fonteReplay.js`, `src/ui/painelReplay.js`, `public/sessoes/` |
-| 5. Desafios | Aquecimento, nível baixo de óleo e vibração elevada, com situação oculta, registro de evidências, resposta, avaliação por critérios e relatório. | `src/config/desafios.js`, `src/ui/painelDesafio.js` |
+| 5. Desafios | Atrito no cabeçote, nível baixo de óleo e vibração elevada, com situação oculta, registro de evidências, resposta, avaliação por critérios e relatório. | `src/config/desafios.js`, `src/ui/painelDesafio.js` |
 
 ## Conexão ao vivo
 
@@ -128,8 +128,9 @@ A Sessão 02 é a atividade da proposta: localizar quando a vibração começou,
 ## Painéis recolhíveis (desktop e celular)
 
 Uma doca de abas embaixo abre e recolhe os painéis **Peças**, **Medições** e **Controles** (painel do modo atual).
-Ao carregar a aplicação os três começam recolhidos, deixando a vista 3D livre; abrir uma medição (rótulo 3D, sensor
-ou `?grandeza=`) abre as Medições sozinha. Cada painel tem **×** no cabeçalho, e a vista 3D se desloca para o torno
+Ao carregar a aplicação os três começam recolhidos, deixando a vista 3D livre; abrir uma medição (sensor
+ou `?grandeza=`) abre as Medições sozinha e leva a câmera até o sensor dela (abrindo a tampa ou a caixa de
+monitoramento). Cada painel tem **×** no cabeçalho, e a vista 3D se desloca para o torno
 ficar no centro da área livre.
 
 - **Desktop:** os painéis podem ficar abertos juntos. Recolhem para as laterais e para baixo pelo ×, pela aba da
@@ -145,7 +146,7 @@ Para ver o layout de celular no computador: F12 → Ctrl+Shift+M (modo dispositi
 
 O HUD HTML não aparece em RV/RA. O painel 3D ao lado da área do operador mostra as quatro leituras, o gráfico (toque numa
 linha para trocar a grandeza), **Comparar curvas**, **Aproximar painel** (traz para perto do rosto) e os controles do modo
-(reprodução no Replay, registro de evidência no Desafio). Aponte o controle para o cabeçote, a placa ou os rótulos para
+(reprodução no Replay, registro de evidência no Desafio). Aponte o controle para o cabeçote, a placa ou os sensores para
 abrir as medições.
 
 ## Ambiente 360°, apresentação e sensores
@@ -164,7 +165,7 @@ abrir as medições.
   abre ou fecha. O botão **Sensores** no topo (ou "Abrir tampas e ver sensores" no tour) abre as duas e leva a câmera
   até a do lado em que ela está: a caixa de engrenagens fica na lateral esquerda do cabeçote e o painel elétrico na
   traseira do gabinete do cabeçote (porta com dobradiça do lado do cabeçote). No painel fica o sensor de corrente, no
-  cabo do motor; na caixa, vibração, nível de óleo (ultrassônico) e rotação (sensor de velocidade), cada um com LED e etiqueta na cor do estado
+  cabo do motor; na caixa, nível de óleo (ultrassônico) e rotação (sensor de velocidade), cada um com LED e etiqueta na cor do estado
   (clicar abre a medição). Tampas e interiores (fundição, polia, trem de engrenagens, placa guardada; disjuntores,
   contatores, borneira, canaletas e fiação) estão no `torno.glb`, modelados a partir das fotos em `public/fotos/`; as
   tampas giram em tempo de execução (o arquivo não muda). Os cabos dos sensores correm por canaletas e prensa-cabos:
@@ -177,14 +178,11 @@ abrir as medições.
 ## Ajustes finos pelo console
 
 ```js
-lab.moverRotulo("vibracao", -0.3, 1.18, 0.66)      // posição (m) de um rótulo, sem recompilar
 lab.simulacao.controle.aceleracao = 10              // velocidade da simulação
 lab.replay.irPara(120000)                           // replay: ir para 2:00
 lab.tour.irPara(3)                                  // apresentação 360°: ir para a 4ª parada
 lab.compartimentos.abrir()                          // abrir painel elétrico e tampa lateral
 ```
-
-Quando chegar a uma posição boa, copie os valores para `src/config/grandezas.js`.
 
 ## Cuidados de interpretação (também exibidos no app)
 

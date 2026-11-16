@@ -1,9 +1,7 @@
 import "./style.css";
-import { Vector3 } from "@babylonjs/core";
 import { CONFIG_CENA, criarCena } from "./cena/cena.js";
 import { carregarModelo, prepararMalhas } from "./cena/modelo.js";
 import { criarSelecao } from "./cena/selecao.js";
-import { criarPontosSensores } from "./cena/pontosSensores.js";
 import { criarAnimacaoPlaca } from "./cena/placa.js";
 import { criarSala } from "./cena/sala.js";
 import { criarCompartimentos, removerReservatorioQuadrado, separarTampas } from "./cena/compartimentos.js";
@@ -57,23 +55,22 @@ async function iniciar() {
   // ---------- dados
   const fluxo = criarFluxo(config);
 
-  // abrir uma grandeza: cartão no HUD, gráfico no painel de RV e câmera no ponto medido
+  // abrir uma grandeza: cartão no HUD, gráfico no painel de RV e câmera no sensor dela
   let sensoresUI = null;
   let painelXR = null;
   let mostrarMedicoes = null; // definido pelo layout dos painéis
+  let mostrarSensor = null; // definido depois dos compartimentos e da caixa de monitoramento
   const abrirGrandeza = (id, { focarCamera = true } = {}) => {
     mostrarMedicoes?.();
     sensoresUI?.abrir(id);
     painelXR?.definirGrandeza(id);
-    const g = GRANDEZA_POR_ID[id];
-    if (focarCamera && g) focar(new Vector3(...g.marcador), 1.6);
+    if (focarCamera && GRANDEZA_POR_ID[id]) mostrarSensor?.(id);
   };
 
-  const pontos = criarPontosSensores(scene, { selecao, aoAbrirGrandeza: (id) => abrirGrandeza(id, { focarCamera: false }) });
   criarComponentesUI({ selecao, focar, aoAbrirGrandeza: (id) => abrirGrandeza(id) });
   sensoresUI = criarSensoresUI({ fluxo, config, aoSelecionarGrandeza: (id) => id && painelXR?.definirGrandeza(id) });
   criarConexaoUI({ fluxo });
-  sincronizarCena({ fluxo, config, pontos, placa });
+  sincronizarCena({ fluxo, placa });
   // botão Sensores: abre o painel elétrico (corrente) e a tampa da caixa de engrenagens (demais sensores)
   const compartimentos = criarCompartimentos({
     scene,
@@ -88,6 +85,15 @@ async function iniciar() {
   });
   // caixa do sistema de monitoramento no tampo do cabeçote: clicar traz para a frente da tela, aberta
   const caixa = criarCaixaMonitoramento({ scene, camera, selecao, fluxo, config });
+  // os balões das medições ficam só nos sensores: abrir uma medição leva até o sensor dela (o de vibração,
+  // MPU-6050, está na caixa de monitoramento; os outros, atrás das tampas, que se abrem)
+  mostrarSensor = (id) => {
+    if (caixa.sensores.includes(id)) return caixa.abrir();
+    const v = compartimentos.vistaDoSensor(id);
+    if (!v) return;
+    compartimentos.abrir({ focarCamera: false });
+    focar(v.alvo.clone(), v.raio, { alfa: v.alfa, beta: v.beta, duracao: 1100 });
+  };
 
   // ---------- RV / RA
   const xr = await iniciarXR(scene, { piso, ceu, posicaoOperador: CONFIG_CENA.posicaoOperador });
@@ -95,7 +101,7 @@ async function iniciar() {
     fluxo,
     config,
     aoSair: () => xr.sair(),
-    aoAlternarRotulos: (v) => pontos.mostrarRotulos(v),
+    aoAlternarRotulos: (v) => compartimentos.mostrarEtiquetas(v),
     aoSelecionarGrandeza: (id) => sensoresUI.abrir(id),
   });
   selecao.on("selecao", (c) => painelXR.definirComponente(c));
@@ -245,7 +251,6 @@ async function iniciar() {
     modelo,
     selecao,
     placa,
-    pontos,
     xr,
     fluxo,
     config,
@@ -262,7 +267,6 @@ async function iniciar() {
     compartimentos,
     caixa,
     vistaInicial,
-    moverRotulo: (id, x, y, z) => pontos.mover(id, x, y, z),
   });
   window.__pronto = true;
 }

@@ -1,8 +1,6 @@
-// As quatro grandezas monitoradas e onde aparecem no modelo.
-// Coordenadas em metros, no mesmo sistema do torno.glb (X ao longo do barramento,
-// cabeçote em -X, Y para cima, frente do operador em +Z).
-// `marcador` = ponto instrumentado; `rotulo` = onde o painel flutuante fica.
-// Ajuste fino ao vivo pelo console: lab.moverRotulo("vibracao", x, y, z)
+// As quatro grandezas monitoradas. Os sensores (e as etiquetas com o valor de cada medição) ficam no modelo:
+// corrente no painel elétrico, nível de óleo e rotação na caixa lateral de engrenagens (compartimentos.js) e
+// vibração na caixa de monitoramento do tampo do cabeçote (caixaMonitoramento.js).
 
 export const GRANDEZAS = [
   {
@@ -16,8 +14,6 @@ export const GRANDEZAS = [
     representacao: "Reservatório na caixa lateral de engrenagens, com o óleo acompanhando a medição.",
     cuidado:
       "Exibir porcentagem somente se o sensor permitir medição contínua; com boia, mostrar apenas os estados disponíveis.",
-    marcador: [-0.704, 0.8, 0.2],
-    rotulo: [-0.3, 0.84, 0.66],
   },
   {
     id: "corrente",
@@ -29,8 +25,6 @@ export const GRANDEZAS = [
     local: "Alimentação do motor principal (pedestal do cabeçote)",
     representacao: "Painel do motor com corrente e histórico durante a operação.",
     cuidado: "Corrente isolada não determina potência elétrica nem identifica a causa de uma sobrecarga.",
-    marcador: [-1.065, 0.33, 0.305],
-    rotulo: [-1.065, 0.42, 0.8],
   },
   {
     id: "vibracao",
@@ -40,11 +34,9 @@ export const GRANDEZAS = [
     casas: 2,
     icone: "onda",
     componente: "cabecote",
-    local: "Carcaça do cabeçote, próximo ao rolamento dianteiro (radial)",
-    representacao: "Indicador junto ao sensor e tendência; análise de frequência se a aquisição permitir.",
+    local: "Acelerômetro MPU-6050 na caixa de monitoramento, no tampo do cabeçote",
+    representacao: "Etiqueta junto ao sensor e tendência; análise de frequência se a aquisição permitir.",
     cuidado: "O diagnóstico depende do sensor, da montagem e da qualidade da aquisição.",
-    marcador: [-0.702, 1.02, 0.27],
-    rotulo: [-0.3, 1.18, 0.66],
   },
   {
     id: "rotacao",
@@ -53,11 +45,9 @@ export const GRANDEZAS = [
     casas: 0,
     icone: "rotacao",
     componente: "placa",
-    local: "Eixo-árvore",
-    representacao: "Indicador de RPM e movimento da placa.",
+    local: "Eixo-árvore (sensor de velocidade óptico na roda dentada da ponta do eixo)",
+    representacao: "Etiqueta junto ao sensor, giro da placa e da roda dentada.",
     cuidado: "Em alta rotação a animação da placa é ilustrativa; a leitura numérica é a referência.",
-    marcador: [-0.6, 1.262, 0.1],
-    rotulo: [-0.45, 1.66, 0.25],
   },
 ];
 

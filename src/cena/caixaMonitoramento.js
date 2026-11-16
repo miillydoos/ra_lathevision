@@ -369,6 +369,7 @@ export function criarCaixaMonitoramento({ scene, camera, selecao, fluxo, config 
 
   return {
     raiz,
+    sensores: ["vibracao"], // medições cujo sensor fica aqui (MPU-6050)
     abrir,
     fechar,
     alternar,

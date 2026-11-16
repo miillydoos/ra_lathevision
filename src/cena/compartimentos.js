@@ -20,7 +20,9 @@ import { criarEmissor } from "../util/emissor.js";
 import { PRENSA_CABO_TAMPO } from "./caixaMonitoramento.js"; // só usado em tempo de execução (importação circular)
 
 // Compartimentos com sensores: o sensor de corrente fica no painel elétrico (traseira do gabinete do cabeçote);
-// vibração, nível de óleo (ultrassônico) e rotação (sensor de velocidade) ficam na caixa lateral de engrenagens.
+// nível de óleo (ultrassônico) e rotação (sensor de velocidade) ficam na caixa lateral de engrenagens; o de
+// vibração (MPU-6050) fica na caixa de monitoramento, no tampo do cabeçote (caixaMonitoramento.js).
+// As etiquetas (balões) das medições ficam só nos sensores.
 // As tampas são as do próprio torno.glb, giradas em dobradiças em tempo de execução (o arquivo não muda).
 // Coordenadas em metros, como no torno.glb; `dobradica` = eixo vertical (x, z); `sensores[].pos` = (z, y)
 // na face aberta e `etiqueta` = deslocamento (z, y) da etiqueta; `angulo` em graus (negativo abre para -X,
@@ -54,7 +56,6 @@ export const COMPARTIMENTOS = [
     // (y ≤ 0,932) e a polia (y ≥ 1,07), na frente da correia (x ≥ -1,33) e fora de trás da porta aberta
     reservatorio: { x: -1.366, z: -0.165, base: 0.937, altura: 0.1, diametro: 0.06 },
     sensores: [
-      { grandeza: "vibracao", tipo: "acelerometro", pos: [-0.055, 1.215], etiqueta: [-0.1, 0.08], rota: [[-1.36, 1.258, -0.055]] },
       // sensor de velocidade óptico (módulo LM393 com chave de fenda) em cima da roda dentada presa na ponta do
       // eixo-árvore (`pos` = centro do eixo); o cabo sai pelo conector do lado da fundição, passa ao lado da
       // cantoneira e sobe até a canaleta
@@ -328,6 +329,17 @@ export function criarCompartimentos({ scene, camera, selecao, tampas, fluxo, con
     abrir: (opcoes) => definir(true, opcoes),
     fechar: () => definir(false),
     alternar: () => definir(!algumaAberta()),
+    /** Mostra ou esconde as etiquetas (balões) dos sensores, como o botão de rótulos do painel de RV. */
+    mostrarEtiquetas(visivel) {
+      for (const s of sensores) for (const m of s.balao) m.setEnabled(visivel);
+    },
+    /** Câmera para ver o sensor da grandeza `id` com a tampa aberta, ou null se ele não fica num compartimento. */
+    vistaDoSensor(id) {
+      const c = comps.find((c) => c.interior.sensores.some((s) => s.id === id));
+      if (!c) return null;
+      const s = c.interior.sensores.find((s) => s.id === id);
+      return { alvo: s.alvo, alfa: c.vista.alfa, beta: c.vista.beta, raio: 0.85 };
+    },
     get aberto() {
       return algumaAberta();
     },
@@ -486,14 +498,7 @@ function criarSensor(scene, raiz, c, s) {
   let saidaCabo = null; // de onde o cabo do sensor sai (o resto do cabo é do chicote)
   let fases = null;
   let rodaGirando = null; // nó que gira com o eixo-árvore (roda dentada do sensor de velocidade)
-  if (s.tipo === "acelerometro") {
-    saindo("sensorVib", 0.032, 0.008, metal, 6);
-    saindo("sensorVib", 0.026, 0.034, cor(scene, "#cfd4da", 0.7), 24, 0.008);
-    const conector = peca(MeshBuilder.CreateCylinder("sensorVib", { diameter: 0.012, height: 0.02 }, scene), escuro);
-    conector.position.set(x - 0.025, y + 0.022, z);
-    saidaCabo = new Vector3(x - 0.025, y + 0.0315, z);
-    ponta = new Vector3(x - 0.043, y, z);
-  } else if (s.tipo === "indutivo") {
+  if (s.tipo === "indutivo") {
     // sensor cilíndrico em pé, logo abaixo da polia, com a face voltada para ela (como na máquina real)
     const xs = x - 0.026;
     const corpo = peca(MeshBuilder.CreateCylinder("sensorRot", { diameter: 0.034, height: 0.065, tessellation: 24 }, scene), metal);
@@ -697,6 +702,8 @@ function criarSensor(scene, raiz, c, s) {
     // para o chicote, em coordenadas do mundo (o interior pode estar girado)
     saidaCabo: saidaCabo && paraMundo(c, saidaCabo),
     fases: fases?.map((f) => paraMundo(c, f)),
+    alvo: paraMundo(c, ponta), // LED do sensor, no mundo: a câmera vai até ele ao abrir a medição
+    balao: [etiqueta, linha],
     roda: rodaGirando,
     rota: s.rota,
     raioCabo: s.raioCabo,
