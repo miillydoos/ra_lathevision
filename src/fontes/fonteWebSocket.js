@@ -9,7 +9,7 @@ const TEMPO_LIMITE_MS = 8000;
  * conecta direto no IP dele (ws://<ip>:81/).
  *
  * Cada mensagem é um JSON com as grandezas lidas (as que faltarem ficam sem leitura nova):
- *   {"temperatura": 41.2, "oleo": 78, "corrente": 12.4, "vibracao": 1.15, "rotacao": 800}
+ *   {"oleo": 78, "corrente": 12.4, "vibracao": 1.15, "rotacao": 800}
  * "ts" é opcional (ver leituras.js); sem ele vale a hora de chegada.
  */
 export function criarFonteWebSocket({ config }) {

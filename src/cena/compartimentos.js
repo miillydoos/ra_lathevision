@@ -20,7 +20,7 @@ import { criarEmissor } from "../util/emissor.js";
 import { PRENSA_CABO_TAMPO } from "./caixaMonitoramento.js"; // só usado em tempo de execução (importação circular)
 
 // Compartimentos com sensores: o sensor de corrente fica no painel elétrico (traseira do gabinete do cabeçote);
-// temperatura, vibração, nível de óleo e rotação ficam na caixa lateral de engrenagens do cabeçote.
+// vibração, nível de óleo (ultrassônico) e rotação (sensor de velocidade) ficam na caixa lateral de engrenagens.
 // As tampas são as do próprio torno.glb, giradas em dobradiças em tempo de execução (o arquivo não muda).
 // Coordenadas em metros, como no torno.glb; `dobradica` = eixo vertical (x, z); `sensores[].pos` = (z, y)
 // na face aberta e `etiqueta` = deslocamento (z, y) da etiqueta; `angulo` em graus (negativo abre para -X,
@@ -54,17 +54,10 @@ export const COMPARTIMENTOS = [
     // (y ≤ 0,932) e a polia (y ≥ 1,07), na frente da correia (x ≥ -1,33) e fora de trás da porta aberta
     reservatorio: { x: -1.366, z: -0.165, base: 0.937, altura: 0.1, diametro: 0.06 },
     sensores: [
-      {
-        grandeza: "temperatura",
-        tipo: "termometro",
-        pos: [0.045, 1.215],
-        etiqueta: [0.1, 0.075],
-        rota: [[-1.375, 1.235, 0.045], [-1.368, 1.246, 0.045], [-1.362, 1.258, 0.045]],
-      },
       { grandeza: "vibracao", tipo: "acelerometro", pos: [-0.055, 1.215], etiqueta: [-0.1, 0.08], rota: [[-1.36, 1.258, -0.055]] },
       // sensor de velocidade óptico (módulo LM393 com chave de fenda) em cima da roda dentada presa na ponta do
       // eixo-árvore (`pos` = centro do eixo); o cabo sai pelo conector do lado da fundição, passa ao lado da
-      // cantoneira e sobe entre os outros dois sensores até a canaleta
+      // cantoneira e sobe até a canaleta
       {
         grandeza: "rotacao",
         tipo: "velocidade",
@@ -493,15 +486,7 @@ function criarSensor(scene, raiz, c, s) {
   let saidaCabo = null; // de onde o cabo do sensor sai (o resto do cabo é do chicote)
   let fases = null;
   let rodaGirando = null; // nó que gira com o eixo-árvore (roda dentada do sensor de velocidade)
-  if (s.tipo === "termometro") {
-    saindo("sensorTemp", 0.026, 0.012, metal, 6);
-    saindo("sensorTemp", 0.016, 0.034, cor(scene, "#d9dde2", 0.5), 20, 0.012);
-    // prensa-cabo em cima da ponta: o cabo sobe até a canaleta
-    const prensa = peca(MeshBuilder.CreateCylinder("caboTemp", { diameter: 0.0075, height: 0.005, tessellation: 12 }, scene), escuro);
-    prensa.position.set(x - 0.04, y + 0.0105, z);
-    saidaCabo = new Vector3(x - 0.04, y + 0.0125, z);
-    ponta = new Vector3(x - 0.047, y, z);
-  } else if (s.tipo === "acelerometro") {
+  if (s.tipo === "acelerometro") {
     saindo("sensorVib", 0.032, 0.008, metal, 6);
     saindo("sensorVib", 0.026, 0.034, cor(scene, "#cfd4da", 0.7), 24, 0.008);
     const conector = peca(MeshBuilder.CreateCylinder("sensorVib", { diameter: 0.012, height: 0.02 }, scene), escuro);

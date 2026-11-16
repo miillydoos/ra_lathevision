@@ -336,9 +336,8 @@ export function criarCaixaMonitoramento({ scene, camera, selecao, fluxo, config 
 
   // ---------- LCD: leituras atuais, em páginas (como no firmware)
   const PAGINAS = [
-    [["Temp", "temperatura", "°C"], ["Vibr", "vibracao", "mm/s"]],
-    [["Corr", "corrente", "A"], ["Oleo", "oleo", "%"]],
-    [["Rot", "rotacao", "rpm"], null],
+    [["Vibr", "vibracao", "mm/s"], ["Corr", "corrente", "A"]],
+    [["Oleo", "oleo", "%"], ["Rot", "rotacao", "rpm"]],
   ];
   function textoLcd(id) {
     const e = fluxo.estado(id);

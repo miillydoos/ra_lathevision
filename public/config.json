@@ -15,13 +15,6 @@
     "senha": "public"
   },
   "grandezas": {
-    "temperatura": {
-      "sentido": "acima",
-      "atencao": 50,
-      "alarme": 60,
-      "escala": [15, 80],
-      "observacao": "Temperatura da carcaça do cabeçote junto ao rolamento dianteiro."
-    },
     "oleo": {
       "sensor": "continuo",
       "sentido": "abaixo",

@@ -28,7 +28,7 @@ export const PARADAS_360 = [
       ["Máquina", "Torno universal ROMI T 350"],
       ["Rotação", "39 a 2.000 rpm (20 velocidades)"],
       ["Motor principal", "7,5 cv"],
-      ["Monitoramento", "5 grandezas"],
+      ["Monitoramento", "4 grandezas"],
     ],
   },
   {
@@ -37,12 +37,12 @@ export const PARADAS_360 = [
     tag: "Transmissão · instrumentado",
     cor: "#ff6b6b",
     componentes: ["cabecote"],
-    medicoes: ["temperatura", "vibracao", "oleo", "rotacao"],
+    medicoes: ["vibracao", "oleo", "rotacao"],
     sensoresInternos: true,
     pino: [-1.2, 1.36, 0.05],
     camera: { alvo: [-0.9, 1.02, 0.1], alfa: FRENTE - 0.45, beta: 1.15, raio: 2.8 },
     descricao:
-      "Aloja o eixo-árvore e a caixa de velocidades, com engrenagens e eixos temperados em banho de óleo. É o conjunto mais instrumentado: os sensores de temperatura, vibração, nível de óleo e rotação ficam na caixa lateral de engrenagens, atrás da tampa lateral.",
+      "Aloja o eixo-árvore e a caixa de velocidades, com engrenagens e eixos temperados em banho de óleo. É o conjunto mais instrumentado: os sensores de vibração, nível de óleo (ultrassônico) e velocidade (rotação) ficam na caixa lateral de engrenagens, atrás da tampa lateral.",
     fatos: [
       ["Velocidades", "20 (39 a 2.000 rpm)"],
       ["Nariz do eixo-árvore", "ASA L0, passagem Ø 52 mm"],
@@ -177,13 +177,13 @@ export const PARADAS_360 = [
     tag: "Sensores e dados",
     cor: "#e599f7",
     camera: { alvo: [-0.6, 1.05, 0.3], alfa: FRENTE + 0.1, beta: 1.22, raio: 3.4 },
-    medicoes: ["temperatura", "oleo", "corrente", "vibracao", "rotacao"],
+    medicoes: ["oleo", "corrente", "vibracao", "rotacao"],
     sensoresInternos: true,
     descricao:
-      "O sensor de corrente fica no painel elétrico; os de temperatura, vibração, nível de óleo e rotação, na caixa lateral de engrenagens. As leituras chegam de um ESP32 pela rede Wi-Fi (WebSocket direto no IP dele ou broker MQTT) e aparecem como Normal, Atenção, Alarme ou Sem dados. Sem sensores, a Simulação reproduz a operação.",
+      "O sensor de corrente fica no painel elétrico; os de vibração, nível de óleo (ultrassônico) e velocidade (rotação), na caixa lateral de engrenagens. As leituras chegam de um ESP32 pela rede Wi-Fi (WebSocket direto no IP dele ou broker MQTT) e aparecem como Normal, Atenção, Alarme ou Sem dados. Sem sensores, a Simulação reproduz a operação.",
     fatos: [
       ["Painel elétrico", "Corrente"],
-      ["Caixa de engrenagens", "Temperatura, vibração, óleo e rotação"],
+      ["Caixa de engrenagens", "Vibração, óleo e rotação"],
       ["Comunicação", "ESP32 → WebSocket (IP) ou MQTT"],
       ["Modos", "Ao vivo, Simulação, Replay e Desafio"],
     ],

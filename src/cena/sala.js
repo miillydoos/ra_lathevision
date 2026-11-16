@@ -377,7 +377,7 @@ function desenharQuadro(ctx, w, h) {
   ctx.stroke();
   ctx.fillStyle = "#2b3138";
   ctx.font = `500 32px ${FONTE}`;
-  ["Temperatura", "Nível de óleo", "Corrente", "Vibração", "Rotação"].forEach((t, i) => ctx.fillText(`• ${t}`, 56, 160 + i * 54));
+  ["Nível de óleo", "Corrente", "Vibração", "Rotação"].forEach((t, i) => ctx.fillText(`• ${t}`, 56, 160 + i * 54));
   // gráfico de tendência com limites de atenção e alarme
   const x0 = 520;
   const x1 = 970;

@@ -25,7 +25,7 @@ export function criarLeitor(config) {
     return Number(bruto);
   }
 
-  /** Objeto com várias grandezas: {"ts": ..., "temperatura": 42.3, "rotacao": 800}. */
+  /** Objeto com várias grandezas: {"ts": ..., "corrente": 12.4, "rotacao": 800}. */
   function publicarLeituras(fluxo, dados) {
     const t = instante(dados.ts);
     for (const [id, v] of Object.entries(dados)) if (IDS_GRANDEZAS.has(id)) fluxo.publicar(id, lerValor(id, v), t);

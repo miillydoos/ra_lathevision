@@ -4,10 +4,10 @@ import { IDS_GRANDEZAS as IDS, criarLeitor } from "./leituras.js";
  * Fonte "Ao vivo": ESP32 → broker MQTT → esta aplicação (MQTT sobre WebSocket).
  *
  * Tópicos aceitos (base configurável, ex.: "senai/torno01"):
- *   <base>/temperatura | oleo | corrente | vibracao | rotacao
- *       payload: número ("42.3") ou JSON {"v": 42.3, "ts": 1760000000000}
+ *   <base>/oleo | corrente | vibracao | rotacao
+ *       payload: número ("12.4") ou JSON {"v": 12.4, "ts": 1760000000000}
  *   <base>/leituras
- *       payload JSON com várias grandezas: {"ts": ..., "temperatura": 42.3, "rotacao": 800}
+ *       payload JSON com várias grandezas: {"ts": ..., "corrente": 12.4, "rotacao": 800}
  *   <base>/status
  *       "online" / "offline" (use como Last Will no ESP32)
  *

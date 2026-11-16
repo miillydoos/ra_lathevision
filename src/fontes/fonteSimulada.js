@@ -44,7 +44,7 @@ export function criarFonteSimulada({ config, semente = 7 }) {
       cargaAlvo = etapaAtual.carga;
     }
     const falhas = cenario ? { ...FALHAS_NULAS, ...cenario.falhas(tSeg) } : controle.falhas;
-    return { rpmAlvo, cargaAlvo, falhas, tauTermico: 240 };
+    return { rpmAlvo, cargaAlvo, falhas };
   }
 
   function avancar(dt, publicarAgora) {

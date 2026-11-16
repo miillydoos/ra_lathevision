@@ -1,9 +1,9 @@
-// Exemplo de firmware: ESP32 como servidor WebSocket enviando as cinco grandezas do torno, sem broker.
+// Exemplo de firmware: ESP32 como servidor WebSocket enviando as quatro grandezas do torno, sem broker.
 // O app conecta direto no IP do ESP32: ⚙ Configurações → "WebSocket direto no ESP32" → IP e porta 81.
-// Bibliotecas (Gerenciador de Bibliotecas da Arduino IDE): WebSockets (Markus Sattler), OneWire, DallasTemperature.
+// Bibliotecas (Gerenciador de Bibliotecas da Arduino IDE): WebSockets (Markus Sattler).
 //
 // Envia a cada 500 ms, para todos os navegadores conectados:
-//   {"temperatura":41.2,"oleo":78.0,"corrente":12.40,"vibracao":1.15,"rotacao":800}
+//   {"oleo":78.0,"corrente":12.40,"vibracao":1.15,"rotacao":800}
 // Sem campo "ts": o app usa a hora de chegada (na rede local o atraso é desprezível).
 //
 // O IP aparece no Monitor Serial (115200 baud) ao conectar no Wi-Fi. Para ele não mudar entre uma aula e outra,
@@ -17,8 +17,6 @@
 
 #include <WiFi.h>
 #include <WebSocketsServer.h>
-#include <OneWire.h>
-#include <DallasTemperature.h>
 
 // ---------- rede
 const char* WIFI_SSID = "WIFI_IOT_CFP601";
@@ -32,27 +30,17 @@ IPAddress GATEWAY(192, 168, 0, 1);    // IP do roteador
 IPAddress MASCARA(255, 255, 255, 0);
 
 // ---------- pinos para ESP32-C3 Mini (ADAPTE). No C3 só GPIO0–4 têm ADC1; evite GPIO2, 8 e 9 (boot).
-const int PINO_DS18B20 = 5;        // temperatura da carcaça do cabeçote
 const int PINO_NIVEL = 0;          // sensor de nível analógico (0–3,3 V) ou chave de boia
 const int PINO_CORRENTE = 1;       // saída do condicionador do TC (ex.: SCT-013 + circuito de polarização)
 const int PINO_VIBRACAO = 3;       // transmissor de vibração com saída proporcional a mm/s RMS
 const int PINO_PULSO_ROTACAO = 4;  // sensor indutivo/hall: 1 pulso por volta do eixo-árvore
 
 WebSocketsServer servidor(PORTA_WS);
-OneWire barramento(PINO_DS18B20);
-DallasTemperature termometro(&barramento);
 
 volatile uint32_t pulsos = 0;
 void IRAM_ATTR aoPulso() { pulsos++; }
 
 // ---------- leituras (ADAPTE à calibração dos seus sensores)
-float lerTemperatura() {
-  // leitura assíncrona: pega a conversão pedida no ciclo anterior e já pede a próxima
-  float t = termometro.getTempCByIndex(0);
-  termometro.requestTemperatures();
-  return t == DEVICE_DISCONNECTED_C ? NAN : t;
-}
-
 float lerNivelOleo() {
   // Sensor contínuo: converte a tensão em porcentagem (calibre vazio/cheio no reservatório).
   // Com chave de boia, retorne 1 (nível OK) ou 0 (baixo) e configure "sensor": "boia" no app.
@@ -124,10 +112,6 @@ void setup() {
   analogReadResolution(12);
   pinMode(PINO_PULSO_ROTACAO, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(PINO_PULSO_ROTACAO), aoPulso, FALLING);
-  termometro.begin();
-  termometro.setResolution(10);            // ~190 ms por conversão
-  termometro.setWaitForConversion(false);  // não bloqueia o laço de 500 ms
-  termometro.requestTemperatures();
   conectarWifi();
   servidor.begin();
   servidor.onEvent(aoEventoWebSocket);
@@ -145,9 +129,7 @@ void loop() {
   ultimo = agora;
 
   char msg[200];
-  float temp = lerTemperatura();
-  snprintf(msg, sizeof msg, "{\"temperatura\":%s,\"oleo\":%.1f,\"corrente\":%.2f,\"vibracao\":%.2f,\"rotacao\":%.0f}",
-           isnan(temp) ? "null" : String(temp, 1).c_str(), lerNivelOleo(), lerCorrente(), lerVibracao(),
-           lerRotacao(intervalo));
+  snprintf(msg, sizeof msg, "{\"oleo\":%.1f,\"corrente\":%.2f,\"vibracao\":%.2f,\"rotacao\":%.0f}",
+           lerNivelOleo(), lerCorrente(), lerVibracao(), lerRotacao(intervalo));
   servidor.broadcastTXT(msg);
 }

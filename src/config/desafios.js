@@ -13,14 +13,13 @@ export const HIPOTESES = [
 ];
 
 export const EVIDENCIAS = [
-  { id: "tempSobe", texto: "A temperatura subiu acima do habitual para a mesma operação" },
-  { id: "tempSobeDepois", texto: "A temperatura só começou a subir depois que outro sinal mudou" },
   { id: "oleoCai", texto: "O nível de óleo caiu ao longo da operação" },
   { id: "oleoEstavel", texto: "O nível de óleo permaneceu estável" },
   { id: "vibSobe", texto: "A vibração aumentou, mais nas rotações altas" },
   { id: "vibEstavel", texto: "A vibração permaneceu na faixa habitual" },
   { id: "correnteOscila", texto: "A corrente passou a oscilar de forma periódica" },
   { id: "correnteSobe", texto: "A corrente ficou um pouco maior nas mesmas etapas do ciclo" },
+  { id: "correnteSobeDepois", texto: "A corrente só começou a subir depois que outro sinal mudou" },
   { id: "rotacaoInstavel", texto: "A rotação ficou instável ou fora do valor programado" },
   { id: "semDados", texto: "Um sensor parou de enviar dados" },
 ];
@@ -31,13 +30,13 @@ export const INSPECOES = [
   { id: "rolamentos", texto: "Inspecionar os rolamentos do eixo-árvore (folga, ruído, aquecimento localizado)" },
   { id: "balanceamento", texto: "Verificar fixação e balanceamento da peça, das castanhas e da placa" },
   { id: "fixacaoSensor", texto: "Conferir a fixação e o cabo do sensor antes de concluir" },
-  { id: "termometro", texto: "Confirmar a temperatura com um termômetro de referência" },
+  { id: "termometro", texto: "Medir a temperatura do cabeçote com um termômetro portátil (infravermelho)" },
   { id: "correia", texto: "Verificar tensão e estado da correia multi-V" },
   { id: "trocarMotor", texto: "Substituir o motor principal imediatamente" },
   { id: "aumentarRotacao", texto: "Aumentar a rotação para compensar e continuar produzindo" },
 ];
 
-export const GRANDEZAS_PRIMEIRO_SINAL = ["temperatura", "oleo", "corrente", "vibracao", "rotacao"];
+export const GRANDEZAS_PRIMEIRO_SINAL = ["oleo", "corrente", "vibracao", "rotacao"];
 
 const CONTEXTO_PADRAO =
   "Produção de eixos de aço SAE 1045: desbaste a 800 rpm e acabamento a 1.250 rpm, ferramenta de metal duro. Em algum momento uma condição anormal começa.";
@@ -47,17 +46,17 @@ export const DESAFIOS = [
     id: "A",
     codinome: "Desafio A",
     situacao: "aquecimento",
-    nomeProfessor: "Aquecimento do cabeçote",
+    nomeProfessor: "Atrito no cabeçote",
     contexto: CONTEXTO_PADRAO,
     hipoteseCorreta: "lubrificacao",
     hipotesesAceitaveis: ["rolamento"],
-    primeiroSinal: ["temperatura", "corrente"],
-    evidenciasEssenciais: ["tempSobe", "correnteSobe"],
-    evidenciasCompativeis: ["oleoEstavel", "vibEstavel"],
-    evidenciasContraditorias: ["oleoCai", "vibSobe", "correnteOscila", "rotacaoInstavel", "semDados", "tempSobeDepois"],
+    primeiroSinal: ["corrente"],
+    evidenciasEssenciais: ["correnteSobe", "oleoEstavel"],
+    evidenciasCompativeis: ["vibEstavel"],
+    evidenciasContraditorias: ["oleoCai", "vibSobe", "correnteOscila", "rotacaoInstavel", "semDados", "correnteSobeDepois"],
     inspecoesEsperadas: ["lubrificacao", "rolamentos", "termometro"],
     explicacao:
-      "Foi inserido atrito crescente no cabeçote, como em lubrificação deficiente ou rolamento com pré-carga excessiva. A temperatura subiu acima do habitual para o mesmo ciclo e a corrente aumentou um pouco, enquanto nível de óleo e vibração ficaram estáveis. Esses sinais são compatíveis com atrito interno, mas não provam a causa: a confirmação vem da inspeção da lubrificação e dos rolamentos, e a leitura pontual deve ser conferida com um termômetro de referência.",
+      "Foi inserido atrito crescente no cabeçote, como em lubrificação deficiente ou rolamento com pré-carga excessiva. A corrente ficou acima do habitual nas mesmas etapas do ciclo, sem oscilar, enquanto o nível de óleo ficou estável e a vibração subiu só um pouco, dentro da faixa habitual. Esses sinais são compatíveis com atrito interno, mas não provam a causa: a confirmação vem da inspeção da lubrificação e dos rolamentos, com a medição da temperatura do cabeçote por um termômetro portátil (atrito aquece).",
   },
   {
     id: "B",
@@ -68,12 +67,12 @@ export const DESAFIOS = [
     hipoteseCorreta: "vazamento",
     hipotesesAceitaveis: ["lubrificacao"],
     primeiroSinal: ["oleo"],
-    evidenciasEssenciais: ["oleoCai", "tempSobeDepois"],
-    evidenciasCompativeis: ["tempSobe", "vibEstavel", "correnteSobe"],
+    evidenciasEssenciais: ["oleoCai", "correnteSobeDepois"],
+    evidenciasCompativeis: ["correnteSobe", "vibEstavel"],
     evidenciasContraditorias: ["oleoEstavel", "vibSobe", "correnteOscila", "rotacaoInstavel", "semDados"],
     inspecoesEsperadas: ["nivelVazamento", "lubrificacao"],
     explicacao:
-      "Foi inserido um vazamento lento no reservatório do cabeçote. O nível caiu primeiro; quando ficou baixo, a lubrificação piorou e a temperatura começou a subir depois. A sequência (óleo antes, temperatura depois) é a evidência principal. A confirmação vem da verificação do visor e da procura do ponto de vazamento; reabastecer sem achar a causa só adia o problema.",
+      "Foi inserido um vazamento lento no reservatório do cabeçote. O nível caiu primeiro; quando ficou baixo, a lubrificação piorou e a corrente começou a subir depois, pelo atrito maior. A sequência (óleo antes, corrente depois) é a evidência principal. A confirmação vem da verificação do visor e da procura do ponto de vazamento; reabastecer sem achar a causa só adia o problema.",
   },
   {
     id: "C",
@@ -85,11 +84,11 @@ export const DESAFIOS = [
     hipotesesAceitaveis: ["rolamento"],
     primeiroSinal: ["vibracao"],
     evidenciasEssenciais: ["vibSobe", "correnteOscila"],
-    evidenciasCompativeis: ["tempSobeDepois", "tempSobe", "oleoEstavel"],
+    evidenciasCompativeis: ["correnteSobeDepois", "correnteSobe", "oleoEstavel"],
     evidenciasContraditorias: ["oleoCai", "vibEstavel", "rotacaoInstavel", "semDados"],
     inspecoesEsperadas: ["balanceamento", "rolamentos", "fixacaoSensor"],
     explicacao:
-      "Foi inserido um desbalanceamento crescente no conjunto girante. A vibração aumentou (mais nas rotações altas, porque cresce com o quadrado da rotação), a corrente passou a oscilar e, mais tarde, a temperatura subiu. A combinação é compatível com desbalanceamento, mas também poderia vir de rolamento danificado ou de um sensor mal fixado: por isso a inspeção da fixação da peça e da placa, dos rolamentos e do próprio sensor vem antes de qualquer conclusão.",
+      "Foi inserido um desbalanceamento crescente no conjunto girante. A vibração aumentou (mais nas rotações altas, porque cresce com o quadrado da rotação), a corrente passou a oscilar e, mais tarde, a corrente média também subiu. A combinação é compatível com desbalanceamento, mas também poderia vir de rolamento danificado ou de um sensor mal fixado: por isso a inspeção da fixação da peça e da placa, dos rolamentos e do próprio sensor vem antes de qualquer conclusão.",
   },
 ];
 
@@ -162,7 +161,7 @@ export function avaliarResposta(desafio, resposta) {
 
   const mensagens = [];
   const j = (resposta.justificativa ?? "").trim();
-  const mencoes = ["temperatura", "óleo", "oleo", "nível", "corrente", "vibra", "rotação", "rpm"].filter((p) => j.toLowerCase().includes(p));
+  const mencoes = ["óleo", "oleo", "nível", "corrente", "vibra", "rotação", "rpm"].filter((p) => j.toLowerCase().includes(p));
   if (j.length < 40) mensagens.push("A justificativa está curta: explique como os sinais levaram à hipótese e o que a inspeção deve confirmar.");
   else if (mencoes.length < 2) mensagens.push("Na justificativa, relacione pelo menos duas grandezas e diga em que ordem mudaram.");
   mensagens.push("Lembre: a combinação de sinais é compatível com uma hipótese, não a prova. A conclusão vem da inspeção.");

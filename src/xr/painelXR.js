@@ -10,14 +10,14 @@ const FONTE = "Segoe UI, Roboto, Arial, sans-serif";
 
 /**
  * Painel que acompanha o aluno dentro do headset (o HUD HTML não aparece em RV/RA):
- * as cinco leituras, o gráfico da grandeza escolhida (ou a comparação), o componente
+ * as quatro leituras, o gráfico da grandeza escolhida (ou a comparação), o componente
  * selecionado e os controles. Fica ao lado da área do operador; "Aproximar" traz o
  * painel para perto do rosto para comparar curvas.
  */
 export function criarPainelXR(scene, { fluxo, config, aoSair, aoAlternarRotulos, aoSelecionarGrandeza }) {
   const estado = {
     componente: null,
-    grandeza: "temperatura",
+    grandeza: "vibracao",
     comparar: false,
     rotulosVisiveis: true,
     aproximado: false,

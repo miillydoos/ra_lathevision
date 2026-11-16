@@ -54,7 +54,7 @@ cliente.on("connect", () => {
   }, AMOSTRA_MS);
   setInterval(() => {
     const e = modelo.estado;
-    console.log(`t=${t.toFixed(0)} s · ${e.rpm.toFixed(0)} rpm · ${e.temperatura.toFixed(1)} °C · óleo ${e.oleo.toFixed(0)} %`);
+    console.log(`t=${t.toFixed(0)} s · ${e.rpm.toFixed(0)} rpm · óleo ${e.oleo.toFixed(0)} %`);
   }, 5000);
 });
 cliente.on("error", (e) => console.error("erro:", e.message));

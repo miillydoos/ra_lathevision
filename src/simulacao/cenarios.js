@@ -15,23 +15,23 @@ export const CENARIOS = [
   },
   {
     id: "aquecimento",
-    nome: "Aquecimento do cabeçote",
+    nome: "Atrito no cabeçote",
     descricao:
-      "Atrito interno crescente no cabeçote. A temperatura sobe lentamente acima do habitual e a corrente fica um pouco maior; nível de óleo e vibração quase não mudam.",
+      "Atrito interno crescente no cabeçote. A corrente fica acima do habitual nas mesmas etapas do ciclo e a vibração sobe só um pouco; o nível de óleo não muda.",
     falhas: (t, k = 1) => ({ atrito: 1.0 * k * rampa(t, 0, 60) }),
   },
   {
     id: "oleoBaixo",
     nome: "Nível baixo de óleo",
     descricao:
-      "Vazamento lento no reservatório. O nível cai durante a operação; quando fica baixo, a lubrificação piora e a temperatura começa a subir depois.",
+      "Vazamento lento no reservatório. O nível cai durante a operação; quando fica baixo, a lubrificação piora e a corrente começa a subir depois.",
     falhas: (t, k = 1) => ({ vazamento: 12 * k }),
   },
   {
     id: "vibracao",
     nome: "Vibração elevada",
     descricao:
-      "Desbalanceamento crescente no conjunto girante. A vibração aumenta (mais em rotação alta), a corrente passa a oscilar e, mais tarde, a temperatura sobe.",
+      "Desbalanceamento crescente no conjunto girante. A vibração aumenta (mais em rotação alta), a corrente passa a oscilar e, mais tarde, a corrente média também sobe.",
     falhas: (t, k = 1) => ({
       desbalanceamento: 0.95 * k * rampa(t, 0, 90),
       oscilacaoCorrente: 0.8 * k * rampa(t, 30, 90),

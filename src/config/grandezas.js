@@ -1,23 +1,10 @@
-// As cinco grandezas monitoradas e onde aparecem no modelo.
+// As quatro grandezas monitoradas e onde aparecem no modelo.
 // Coordenadas em metros, no mesmo sistema do torno.glb (X ao longo do barramento,
 // cabeçote em -X, Y para cima, frente do operador em +Z).
 // `marcador` = ponto instrumentado; `rotulo` = onde o painel flutuante fica.
-// Ajuste fino ao vivo pelo console: lab.moverRotulo("temperatura", x, y, z)
+// Ajuste fino ao vivo pelo console: lab.moverRotulo("vibracao", x, y, z)
 
 export const GRANDEZAS = [
-  {
-    id: "temperatura",
-    nome: "Temperatura",
-    unidade: "°C",
-    casas: 1,
-    icone: "termometro",
-    componente: "cabecote",
-    local: "Carcaça do cabeçote, junto ao rolamento dianteiro",
-    representacao: "Marcador no ponto instrumentado e gráfico de evolução.",
-    cuidado: "Uma medição pontual não representa a temperatura de toda a máquina.",
-    marcador: [-0.8, 1.336, 0.12],
-    rotulo: [-1.15, 1.62, 0.2],
-  },
   {
     id: "oleo",
     nome: "Nível de óleo",

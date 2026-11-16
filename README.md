@@ -1,7 +1,7 @@
 # Laboratório de Monitoramento e Diagnóstico — Torno ROMI T 350
 
-Aplicação Babylon.js (tela, RV e RA) em que o aluno explora o torno em 3D, acompanha cinco grandezas medidas
-(temperatura, nível de óleo, corrente, vibração e rotação) e resolve situações de manutenção.
+Aplicação Babylon.js (tela, RV e RA) em que o aluno explora o torno em 3D, acompanha quatro grandezas medidas
+(nível de óleo, corrente, vibração e rotação) e resolve situações de manutenção.
 
 Reúne os projetos 1, 2 e 4 da proposta em quatro modos:
 
@@ -53,7 +53,7 @@ Sem broker: o app conecta no **IP do ESP32**. Firmware em `exemplos/esp32/torno_
 (biblioteca **WebSockets**, de Markus Sattler). Ao ligar, o ESP32 mostra o IP no Monitor Serial (115200); digite esse
 IP em Configurações (porta 81). Para o IP não mudar, ligue `IP_FIXO` no firmware ou reserve o endereço no roteador.
 
-A cada 500 ms o ESP32 envia um JSON com as grandezas: `{"temperatura": 41.2, "oleo": 78, "corrente": 12.4, "vibracao": 1.15, "rotacao": 800}`
+A cada 500 ms o ESP32 envia um JSON com as grandezas: `{"oleo": 78, "corrente": 12.4, "vibracao": 1.15, "rotacao": 800}`
 (`ts` opcional, como no MQTT).
 
 - O computador, celular ou headset precisa estar **na mesma rede Wi-Fi** do ESP32.
@@ -74,8 +74,8 @@ Tópicos (base configurável, padrão `senai/torno01`):
 
 | Tópico | Conteúdo |
 |---|---|
-| `<base>/temperatura`, `/oleo`, `/corrente`, `/vibracao`, `/rotacao` | número (`42.3`) ou JSON `{"v": 42.3, "ts": 1760000000000}` |
-| `<base>/leituras` | várias grandezas: `{"ts": …, "temperatura": 42.3, "rotacao": 800}` |
+| `<base>/oleo`, `/corrente`, `/vibracao`, `/rotacao` | número (`12.4`) ou JSON `{"v": 12.4, "ts": 1760000000000}` |
+| `<base>/leituras` | várias grandezas: `{"ts": …, "corrente": 12.4, "rotacao": 800}` |
 | `<base>/status` | `online` / `offline` (Last Will do ESP32) |
 
 `ts` é opcional. Se o relógio do dispositivo estiver mais de 60 s diferente do navegador (ESP32 sem NTP), vale a hora de chegada.
@@ -110,9 +110,9 @@ pelo modelo de simulação (`npm run sessoes`) e têm títulos neutros; a causa 
 | Sessão | Situação (para o professor) |
 |---|---|
 | 01 · Eixo SAE 1045 (referência) | operação normal |
-| 02 · Eixo SAE 1045 (lote 2) | vibração aumenta a partir de 2:00, corrente oscila, temperatura sobe depois |
-| 03 · Buchas de latão | vazamento de óleo a partir de 1:00; temperatura sobe quando o nível fica baixo |
-| 04 · Eixo longo SAE 1020 | aquecimento do cabeçote a partir de 1:30 |
+| 02 · Eixo SAE 1045 (lote 2) | vibração aumenta a partir de 2:00, corrente oscila e, depois, a corrente média sobe |
+| 03 · Buchas de latão | vazamento de óleo a partir de 1:00; corrente sobe quando o nível fica baixo |
+| 04 · Eixo longo SAE 1020 | atrito no cabeçote a partir de 1:30 (corrente acima do habitual) |
 
 A Sessão 02 é a atividade da proposta: localizar quando a vibração começou, o que mudou junto e propor inspeções.
 
@@ -143,7 +143,7 @@ Para ver o layout de celular no computador: F12 → Ctrl+Shift+M (modo dispositi
 
 ## Dentro do headset
 
-O HUD HTML não aparece em RV/RA. O painel 3D ao lado da área do operador mostra as cinco leituras, o gráfico (toque numa
+O HUD HTML não aparece em RV/RA. O painel 3D ao lado da área do operador mostra as quatro leituras, o gráfico (toque numa
 linha para trocar a grandeza), **Comparar curvas**, **Aproximar painel** (traz para perto do rosto) e os controles do modo
 (reprodução no Replay, registro de evidência no Desafio). Aponte o controle para o cabeçote, a placa ou os rótulos para
 abrir as medições.
@@ -164,7 +164,7 @@ abrir as medições.
   abre ou fecha. O botão **Sensores** no topo (ou "Abrir tampas e ver sensores" no tour) abre as duas e leva a câmera
   até a do lado em que ela está: a caixa de engrenagens fica na lateral esquerda do cabeçote e o painel elétrico na
   traseira do gabinete do cabeçote (porta com dobradiça do lado do cabeçote). No painel fica o sensor de corrente, no
-  cabo do motor; na caixa, temperatura, vibração, nível de óleo e rotação, cada um com LED e etiqueta na cor do estado
+  cabo do motor; na caixa, vibração, nível de óleo (ultrassônico) e rotação (sensor de velocidade), cada um com LED e etiqueta na cor do estado
   (clicar abre a medição). Tampas e interiores (fundição, polia, trem de engrenagens, placa guardada; disjuntores,
   contatores, borneira, canaletas e fiação) estão no `torno.glb`, modelados a partir das fotos em `public/fotos/`; as
   tampas giram em tempo de execução (o arquivo não muda). Os cabos dos sensores correm por canaletas e prensa-cabos:
@@ -177,7 +177,7 @@ abrir as medições.
 ## Ajustes finos pelo console
 
 ```js
-lab.moverRotulo("temperatura", -1.15, 1.62, 0.2)   // posição (m) de um rótulo, sem recompilar
+lab.moverRotulo("vibracao", -0.3, 1.18, 0.66)      // posição (m) de um rótulo, sem recompilar
 lab.simulacao.controle.aceleracao = 10              // velocidade da simulação
 lab.replay.irPara(120000)                           // replay: ir para 2:00
 lab.tour.irPara(3)                                  // apresentação 360°: ir para a 4ª parada
@@ -188,7 +188,6 @@ Quando chegar a uma posição boa, copie os valores para `src/config/grandezas.j
 
 ## Cuidados de interpretação (também exibidos no app)
 
-- Temperatura: uma medição pontual não representa a temperatura de toda a máquina.
 - Nível de óleo: porcentagem só com sensor contínuo; com boia, apenas os estados.
 - Corrente: sozinha, não determina potência nem identifica a causa de uma sobrecarga.
 - Vibração: o diagnóstico depende do sensor, da montagem e da qualidade da aquisição.

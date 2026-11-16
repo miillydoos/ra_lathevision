@@ -37,7 +37,7 @@ function htmlEstado(estado) {
 }
 
 /**
- * Painel "Medições" (lateral direita): cartões das cinco grandezas com valor, estado,
+ * Painel "Medições" (lateral direita): cartões das quatro grandezas com valor, estado,
  * idade da leitura e minigráfico; ao abrir um cartão, gráfico detalhado com limites,
  * cuidados de interpretação e tabela. Alternativa "Comparar": pequenos múltiplos.
  */
@@ -55,7 +55,7 @@ export function criarSensoresUI({ fluxo, config, aoSelecionarGrandeza }) {
       <p class="sutil info-fonte" id="info-fonte"></p>
       <div class="lista-sensores" id="lista-sensores"></div>
       <div class="comparacao" id="comparacao" hidden>
-        <canvas class="grafico-comparacao" aria-label="Pequenos múltiplos das cinco grandezas no mesmo eixo de tempo"></canvas>
+        <canvas class="grafico-comparacao" aria-label="Pequenos múltiplos das quatro grandezas no mesmo eixo de tempo"></canvas>
         <p class="sutil">Mesma janela de tempo para todas as grandezas. Passe o mouse para ler os valores no mesmo instante.</p>
       </div>
     </section>`;

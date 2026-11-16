@@ -59,5 +59,5 @@ setInterval(() => {
 
 setInterval(() => {
   const e = modelo.estado;
-  console.log(`t=${t.toFixed(0)} s · ${servidor.clients.size} navegador(es) · ${e.rpm.toFixed(0)} rpm · ${e.temperatura.toFixed(1)} °C · óleo ${e.oleo.toFixed(0)} %`);
+  console.log(`t=${t.toFixed(0)} s · ${servidor.clients.size} navegador(es) · ${e.rpm.toFixed(0)} rpm · óleo ${e.oleo.toFixed(0)} %`);
 }, 5000);

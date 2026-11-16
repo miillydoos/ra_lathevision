@@ -93,7 +93,7 @@ const indice = [];
 SESSOES.forEach((def, n) => {
   const modelo = criarModelo({ semente: def.semente });
   const cenario = iniciarCenario(def.cenario, { inicio: def.apos ?? 0, intensidade: def.intensidade ?? 1 });
-  const series = { temperatura: [], oleo: [], corrente: [], vibracao: [], rotacao: [] };
+  const series = { oleo: [], corrente: [], vibracao: [], rotacao: [] };
   let desde = 0;
   for (let t = 0; t <= def.duracao + 1e-6; t += PASSO) {
     const etapa = etapaDoCiclo(def.ciclo, t);

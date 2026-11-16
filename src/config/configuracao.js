@@ -10,7 +10,6 @@ const PADRAO = {
   websocket: { ip: "", porta: 81 },
   mqtt: { url: "wss://public.cloud.shiftr.io", topicoBase: "tormax30/senai/torno01", usuario: "public", senha: "public" },
   grandezas: {
-    temperatura: { sentido: "acima", atencao: 50, alarme: 60, escala: [15, 80] },
     oleo: { sensor: "continuo", sentido: "abaixo", atencao: 40, alarme: 25, escala: [0, 100] },
     corrente: { sentido: "acima", atencao: 18, alarme: 22, escala: [0, 30], nominal: 20, persistenciaS: 2 },
     vibracao: { sentido: "acima", atencao: 2.8, alarme: 4.5, escala: [0, 8] },
