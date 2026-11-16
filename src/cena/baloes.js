@@ -1,18 +1,18 @@
 import { DynamicTexture, Mesh, MeshBuilder, StandardMaterial, Vector3 } from "@babylonjs/core";
 import { desenharIcone } from "../util/icones.js";
 
-// Balões com o valor das medições, presos aos sensores: vermelhos, grandes e sempre por cima do modelo, de
+// Balões com o valor das medições, presos aos sensores: vermelhos translúcidos, grandes e sempre por cima do modelo, de
 // frente para a câmera, para serem vistos de longe. Na tela crescem com a distância da câmera (até ESCALA_MAX)
 // e continuam legíveis na vista geral; no headset ficam no tamanho real. Em alarme, pulsam.
-// O estado da medição (Normal, Atenção, Alarme, Sem dados) fica no selo branco, com o ícone na cor do estado.
+// O estado da medição (Normal, Atenção, Alarme, Sem dados) aparece em texto, com um ponto na cor do estado.
 
 export const BALAO = { largura: 0.2, altura: 0.075 }; // m, tamanho base (proporção da textura, 320 × 120)
 const TEX = { largura: 640, altura: 240 };
 const DISTANCIA_BASE = 0.9; // m: até aqui o balão fica no tamanho base; depois cresce junto com a distância
 const ESCALA_MAX = 3;
 
-const VERMELHO = "#d32f2f";
-const VERMELHO_SEM_DADOS = "#8a3434";
+const VERMELHO = "rgba(211, 47, 47, 0.55)"; // translúcido: o modelo aparece por trás
+const VERMELHO_SEM_DADOS = "rgba(110, 40, 40, 0.5)";
 
 const registros = new WeakMap();
 /** Um laço por cena ajusta o tamanho e a posição de todos os balões. */
@@ -86,8 +86,9 @@ export function criarBalao(scene, { nome, ancora, sentido = 1, normal = null, gr
 }
 
 /**
- * Desenha o balão (vermelho, borda branca, texto branco e selo do estado) num canvas de proporção 320 × 120,
- * em qualquer resolução. `nome` é o título (padrão: "Sensor de <grandeza>").
+ * Desenha o balão num canvas de proporção 320 × 120, em qualquer resolução: vermelho translúcido (o modelo
+ * aparece por trás), borda fina, título pequeno, valor grande e o estado com um ponto na cor dele (nunca só a
+ * cor: o texto do estado vai ao lado). `nome` é o título (padrão: "Sensor de <grandeza>").
  */
 export function desenharEtiqueta(ctx, g, estado, tv, nome = `Sensor de ${g.nome.toLowerCase()}`) {
   const W = 320;
@@ -99,45 +100,51 @@ export function desenharEtiqueta(ctx, g, estado, tv, nome = `Sensor de ${g.nome.
   ctx.setTransform(k, 0, 0, k, 0, 0);
   ctx.clearRect(0, 0, W, H);
   ctx.beginPath();
-  ctx.roundRect(4, 4, W - 8, H - 8, 18);
+  ctx.roundRect(3, 3, W - 6, H - 6, 16);
   ctx.fillStyle = semDados ? VERMELHO_SEM_DADOS : VERMELHO;
   ctx.fill();
-  ctx.lineWidth = 5;
-  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = "rgba(255, 205, 205, 0.85)";
   ctx.stroke();
 
+  // sombra leve no texto: continua legível com o fundo claro aparecendo pelo balão
+  ctx.shadowColor = "rgba(0, 0, 0, 0.55)";
+  ctx.shadowBlur = 4;
+  ctx.shadowOffsetY = 1;
+
   // título (diminui até caber)
-  desenharIcone(ctx, g.icone, 16, 13, 28, "#ffffff", 2.4);
-  ctx.fillStyle = "#ffffff";
+  desenharIcone(ctx, g.icone, 16, 14, 24, "rgba(255,255,255,0.9)", 2.2);
+  ctx.fillStyle = "rgba(255, 255, 255, 0.92)";
   ctx.textAlign = "left";
   ctx.textBaseline = "middle";
-  let tam = 23;
+  let tam = 21;
   do ctx.font = `700 ${tam}px ${FONTE}`;
-  while (ctx.measureText(nome).width > W - 52 - 14 && --tam > 14);
-  ctx.fillText(nome, 52, 28);
+  while (ctx.measureText(nome).width > W - 48 - 14 && --tam > 13);
+  ctx.fillText(nome, 48, 27);
 
   // valor e unidade
   ctx.textBaseline = "alphabetic";
-  ctx.font = `800 44px ${FONTE}`;
-  ctx.fillStyle = semDados ? "#f3c6c6" : "#ffffff";
+  ctx.font = `700 46px ${FONTE}`;
+  ctx.fillStyle = semDados ? "rgba(255, 255, 255, 0.6)" : "#ffffff";
   ctx.fillText(tv.valor, 16, 98);
   const largura = ctx.measureText(tv.valor).width;
-  ctx.font = `600 15px ${FONTE}`;
-  ctx.fillStyle = "#ffe1e1";
-  ctx.fillText(tv.unidade, 16 + largura + 5, 98);
+  ctx.font = `500 16px ${FONTE}`;
+  ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
+  ctx.fillText(tv.unidade, 16 + largura + 6, 98);
 
-  // selo do estado: branco, com o ícone na cor do estado (nunca só a cor)
-  ctx.font = `700 15px ${FONTE}`;
-  const lt = ctx.measureText(estado.texto).width;
-  const ws = lt + 34;
-  const xs = W - 14 - ws;
-  const ys = 74;
-  ctx.beginPath();
-  ctx.roundRect(xs, ys, ws, 28, 14);
+  // estado: texto à direita e um ponto na cor do estado (com aro branco, visível sobre o vermelho)
+  ctx.font = `700 16px ${FONTE}`;
+  ctx.textAlign = "right";
   ctx.fillStyle = "#ffffff";
+  ctx.fillText(estado.texto, W - 16, 96);
+  const xp = W - 16 - ctx.measureText(estado.texto).width - 12;
+  ctx.shadowColor = "transparent";
+  ctx.beginPath();
+  ctx.arc(xp, 90.5, 5.5, 0, Math.PI * 2);
+  ctx.fillStyle = semDados ? "#9aa3ad" : estado.cor;
   ctx.fill();
-  desenharIcone(ctx, estado.icone, xs + 6, ys + 5, 18, semDados ? "#6b7480" : estado.cor, 2.8);
-  ctx.fillStyle = "#1b1f24";
-  ctx.fillText(estado.texto, xs + 28, ys + 19.5);
+  ctx.lineWidth = 1.6;
+  ctx.strokeStyle = "#ffffff";
+  ctx.stroke();
   ctx.restore();
 }
