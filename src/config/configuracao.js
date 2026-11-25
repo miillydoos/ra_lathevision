@@ -5,8 +5,8 @@ const PADRAO = {
   maquina: "Torno ROMI T 350",
   leituraVelhaS: 10,
   janelaGraficoS: 120,
-  // "websocket": o app conecta direto no IP do ESP32 (rede local) · "mqtt": passa por um broker
-  conexao: "websocket",
+  // "mqtt": passa por um broker (funciona em HTTPS e na RA) · "websocket": direto no IP do ESP32 (rede local, só http://)
+  conexao: "mqtt",
   websocket: { ip: "", porta: 81 },
   mqtt: { url: "wss://public.cloud.shiftr.io", topicoBase: "tormax30/senai/torno01", usuario: "public", senha: "public" },
   grandezas: {
@@ -19,7 +19,9 @@ const PADRAO = {
 
 const CHAVE_LOCAL = "lab-torno:config";
 
-export const tipoConexao = (config) => (config.conexao === "mqtt" ? "mqtt" : "websocket");
+// WebSocket só quando o IP do ESP32 foi preenchido; sem ele, o "Ao vivo" vai pelo broker MQTT e já conecta ao clicar
+export const tipoConexao = (config) =>
+  config.conexao === "websocket" && String(config.websocket?.ip ?? "").trim() ? "websocket" : "mqtt";
 
 /**
  * Endereço do servidor WebSocket do ESP32 a partir do que foi digitado:
@@ -61,6 +63,8 @@ export async function carregarConfiguracao() {
   }
   const base = mesclar(PADRAO, arquivo);
   const config = mesclar(base, lerLocal());
+  // usuário e senha do MQTT em branco (ajuste antigo salvo no navegador) voltam a "public", a do broker público
+  for (const k of ["usuario", "senha"]) if (!config.mqtt[k]) config.mqtt[k] = PADRAO.mqtt[k];
   config.__base = base;
   return config;
 }

@@ -88,8 +88,8 @@ export function criarFonteMQTT({ config }) {
       }
       cliente = mqtt.connect(o.url, {
         clientId: `lab-torno-${Math.random().toString(16).slice(2, 10)}`,
-        username: o.usuario || undefined,
-        password: o.senha || undefined,
+        username: o.usuario || "public", // broker público (shiftr.io): usuário e senha "public"
+        password: o.senha || "public",
         reconnectPeriod: 3000,
         connectTimeout: 8000,
         clean: true,

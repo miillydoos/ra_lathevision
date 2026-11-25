@@ -4,7 +4,7 @@ import { criarFonteWebSocket } from "./fonteWebSocket.js";
 
 /**
  * Modo "Ao vivo": usa a conexão escolhida em Configurações a cada vez que o modo é ativado —
- * WebSocket direto no IP do ESP32 (padrão) ou broker MQTT.
+ * broker MQTT (padrão) ou WebSocket direto no IP do ESP32.
  */
 export function criarFonteAoVivo({ config }) {
   const conexoes = { websocket: criarFonteWebSocket({ config }), mqtt: criarFonteMQTT({ config }) };
