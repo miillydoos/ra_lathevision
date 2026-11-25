@@ -319,7 +319,7 @@ export function criarSala(scene, { tamanho = 14, altura = 5, luzesExcluidas = []
     for (const da of [-0.18, 0, 0.18]) tuboParede("fundo", a + da, 2.25, 0.07, a + da, 4.6, 0.07, 0.022, "#8d96a0", 10);
   }
   {
-    const a = -4.2; // extintor com placa e demarcação no piso
+    const a = -3.95; // extintor com placa e demarcação no piso
     const d = 0.13;
     caixa("fundo", a, 1.02, 0.05, 0.17, 0.05, 0.1, "#59626d");
     tuboParede("fundo", a, 0.78, d, a, 1.26, d, 0.085, "#c8102e", 16);
@@ -334,7 +334,8 @@ export function criarSala(scene, { tamanho = 14, altura = 5, luzesExcluidas = []
     noPiso("piso", "solido", x0, x1, z0, z1, 0.0025, "#e8b400");
     noPiso("piso", "solido", x0 + 0.07, x1 - 0.07, z0 + 0.07, z1 - 0.07, 0.003, "#c8102e");
   }
-  for (const a of [-6.3, -5.45]) armarioAzul("fundo", a, 0.8, 1.0);
+  // armários azuis afastados do armário de inflamáveis (no canto eles se encostavam): ~30 cm de folga dos dois lados
+  for (const a of [-5.8, -5.0]) armarioAzul("fundo", a, 0.8, 1.0);
 
   // ---------- frente: escritório envidraçado (UpLab) ao longo de todo o corredor
   escritorio(ESCRITORIO.x0, ESCRITORIO.x1, ESCRITORIO.z0);

@@ -9,6 +9,10 @@ import { criarCaixaMonitoramento } from "./cena/caixaMonitoramento.js";
 import { criarVitrineSensor } from "./cena/vitrineSensor.js";
 import { sincronizarCena } from "./cena/sincronizarCena.js";
 import { iniciarXR } from "./xr/xr.js";
+import { abrirQuickLook, raDoAparelho, urlModelo } from "./xr/raNativa.js";
+import { criarRACamera, suportaCamera } from "./xr/raCamera.js";
+import { criarAndar } from "./cena/andar.js";
+import { svgIcone } from "./util/icones.js";
 import { criarPainelXR } from "./xr/painelXR.js";
 import { carregarConfiguracao } from "./config/configuracao.js";
 import { GRANDEZA_POR_ID } from "./config/grandezas.js";
@@ -64,6 +68,7 @@ async function iniciar() {
   let painelXR = null;
   let mostrarMedicoes = null; // definido pelo layout dos painéis
   let mostrarSensor = null; // definido depois dos compartimentos e da caixa de monitoramento
+  let andar = null; // modo Andar (primeira pessoa); a vista de perto dos sensores é da câmera orbital
   const abrirGrandeza = (id, { focarCamera = true } = {}) => {
     mostrarMedicoes?.();
     sensoresUI?.abrir(id);
@@ -94,6 +99,7 @@ async function iniciar() {
   // MPU-6050, vem com a caixa de monitoramento; os outros, sozinhos, de dentro dos compartimentos)
   const vitrine = criarVitrineSensor({ scene, camera, selecao, fluxo, config });
   mostrarSensor = (id) => {
+    andar?.sair();
     painelXR?.definirGrandeza(id);
     if (caixa.sensores.includes(id)) {
       vitrine.fechar({ imediato: true });
@@ -124,11 +130,59 @@ async function iniciar() {
   if (parametros.has("painelxr")) painelXR.mostrar(true);
 
   const btnVR = document.getElementById("btn-vr");
-  const btnAR = document.getElementById("btn-ar");
   btnVR.hidden = !xr.suportaVR;
-  btnAR.hidden = !xr.suportaAR;
   btnVR.addEventListener("click", () => xr.entrar("immersive-vr"));
-  btnAR.addEventListener("click", () => xr.entrar("immersive-ar"));
+
+  // ---------- Andar pelo laboratório (computador e celular): câmera em primeira pessoa com colisão
+  const btnAndar = document.getElementById("btn-andar");
+  btnAndar.insertAdjacentHTML("afterbegin", svgIcone("andar"));
+  andar = criarAndar(scene, camera, canvas, {
+    limite: CONFIG_CENA.tamanhoPiso / 2,
+    posicaoInicial: CONFIG_CENA.posicaoOperador,
+    aoMudar: (ligado) => btnAndar.setAttribute("aria-pressed", String(ligado)),
+  });
+  btnAndar.addEventListener("click", () => andar.alternar());
+  xr.on("estado", (emXR) => emXR && andar.sair());
+
+  // ---------- RA: WebXR onde existe (Android com ARCore, Quest); no iPhone/iPad, o AR Quick Look quando há
+  // models/torno.usdz; nos outros celulares (e no iPhone sem o .usdz), a câmera do aparelho por trás do torno
+  const btnAR = document.getElementById("btn-ar");
+  btnAR.insertAdjacentHTML("afterbegin", svgIcone("ra"));
+  const raCamera = criarRACamera({
+    scene,
+    camera,
+    sala,
+    piso,
+    ceu,
+    aoMudar: (ligado) => btnAR.setAttribute("aria-pressed", String(ligado)),
+  });
+  const tocavel = matchMedia("(pointer: coarse)").matches || navigator.maxTouchPoints > 0;
+  let tipoRA = xr.suportaAR ? "webxr" : tocavel && suportaCamera() ? "camera" : null;
+  const atualizarBotaoRA = () => {
+    btnAR.hidden = !tipoRA;
+    btnAR.title =
+      tipoRA === "quicklook"
+        ? "Abre a câmera com o torno em tamanho real, apoiado no chão (AR Quick Look)"
+        : tipoRA === "camera"
+          ? "Abre a câmera do aparelho com o torno 3D e as medições por cima"
+          : "Realidade aumentada: o torno em tamanho real no seu ambiente";
+  };
+  atualizarBotaoRA();
+  if (!xr.suportaAR && raDoAparelho(false) === "quicklook") {
+    fetch(urlModelo("torno.usdz"), { method: "HEAD" })
+      .then((r) => {
+        if (!r.ok) return;
+        tipoRA = "quicklook";
+        atualizarBotaoRA();
+      })
+      .catch(() => {});
+  }
+  btnAR.addEventListener("click", () => {
+    andar.sair();
+    if (tipoRA === "quicklook") abrirQuickLook(urlModelo("torno.usdz")); // dentro do toque, senão o iOS ignora
+    else if (tipoRA === "camera") raCamera.ativo ? raCamera.sair() : raCamera.entrar();
+    else xr.entrar("immersive-ar");
+  });
 
   // ---------- modos e fontes de dados
   const modos = criarModos({ fluxo, sensoresUI, painelXR });
@@ -256,7 +310,27 @@ async function iniciar() {
     vitrine.fechar({ imediato: true });
     caixa.fechar({ imediato: true });
   });
-  document.getElementById("btn-tour").addEventListener("click", () => modos.fecharAba());
+  document.getElementById("btn-tour").addEventListener("click", () => {
+    modos.fecharAba();
+    andar.sair(); // a apresentação 360° usa a câmera orbital
+    raCamera.sair();
+  });
+  // Andar e RA pela câmera também mexem na vista: fecham a apresentação, a aba Histórico e a vista de perto
+  const limparVista = () => {
+    tour.fechar();
+    modos.fecharAba();
+    vitrine.fechar({ imediato: true });
+    caixa.fechar({ imediato: true });
+  };
+  btnAndar.addEventListener("click", () => {
+    if (!andar.ativo) return;
+    limparVista();
+    raCamera.sair();
+  });
+  btnAR.addEventListener("click", limparVista);
+  compartimentos.on("estado", (aberto) => aberto && andar.sair());
+  caixa.on("estado", (aberta) => aberta && andar.sair());
+  modos.on("aba", (id) => id && raCamera.sair());
   compartimentos.on("estado", (aberto) => aberto && modos.fecharAba());
   caixa.on("estado", (aberta) => aberta && modos.fecharAba());
   xr.on("estado", () => caixa.fechar({ imediato: true })); // volta ao torno ao entrar ou sair do headset
@@ -303,6 +377,8 @@ async function iniciar() {
     painelReplay,
     layout,
     sala,
+    andar,
+    raCamera,
     tour,
     compartimentos,
     caixa,

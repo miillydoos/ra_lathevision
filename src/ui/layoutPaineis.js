@@ -261,10 +261,12 @@ export function criarLayoutPaineis({ camera = null, scene = null, vistas = [] } 
       const H = window.innerHeight;
       let esquerda = 0;
       let direita = W;
-      const topo = $(".topo")?.getBoundingClientRect().bottom ?? 0;
-      let base = barra.getBoundingClientRect().top;
+      // RA pela câmera (raCamera.js): a interface some e o torno fica no meio da tela inteira
+      const telaCheia = document.body.classList.contains("ra-camera");
+      const topo = telaCheia ? 0 : ($(".topo")?.getBoundingClientRect().bottom ?? 0);
+      let base = telaCheia ? H : barra.getBoundingClientRect().top;
       for (const f of folhas) {
-        if (!aberta(f)) continue;
+        if (telaCheia || !aberta(f)) continue;
         if (celular()) {
           // posição final da folha (sem depender da animação)
           base = Math.min(base, H - barra.offsetHeight - f.el.offsetHeight);

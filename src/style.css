@@ -505,6 +505,8 @@ canvas.navegavel { cursor: pointer; }
   .marca .titulo-longo { display: none; }
   .marca .titulo-curto { display: inline; }
   .topo .conexao { max-width: 200px; }
+  /* "Entrar em RA" vira "RA" e Sensores fica só com o ícone: sobra espaço para o título e a conexão */
+  .topo .texto-longo { display: none; }
 }
 
 .registros { min-width: 0; }
@@ -558,7 +560,7 @@ textarea { resize: vertical; width: 100%; }
     right: 6px;
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas: "marca acoes" "conexao conexao" "modos modos";
+    grid-template-areas: "marca acoes" "conexao extra" "modos modos";
     gap: 6px 8px;
     padding: 7px 8px;
     z-index: 6;
@@ -572,6 +574,8 @@ textarea { resize: vertical; width: 100%; }
   .modos { grid-area: modos; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 4px; }
   .modos .botao { padding: 8px 2px; font-size: 13px; text-align: center; }
   .acoes .botao { padding: 7px 9px; min-height: 34px; }
+  .acoes-extra { grid-area: extra; justify-self: end; gap: 4px; }
+  .acoes-extra .botao { padding: 5px 10px; min-height: 30px; font-size: 13px; }
 
   /* barra de abas */
   .barra-abas {
@@ -1296,4 +1300,71 @@ body.historico-aberto .dica { visibility: hidden; }
   .rel-resumo { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .rel-grandezas { grid-template-columns: minmax(0, 1fr); }
   .rel-filtro { flex: 1 1 100%; }
+}
+
+
+/* =====================================================================
+   Andar pelo laboratório (src/cena/andar.js) e RA pela câmera (src/xr/raCamera.js).
+   Os botões ficam ao lado do estado da conexão (no celular, na 2ª linha da barra de cima).
+   ===================================================================== */
+.acoes-extra { display: flex; gap: 6px; align-items: center; }
+#btn-andar, #btn-ar { display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; }
+@media (min-width: 901px) {
+  .topo .acoes-extra { flex: none; }
+}
+@media (max-width: 370px) {
+  #btn-andar .rotulo { display: none; }
+}
+
+.dica-andar,
+.barra-ra {
+  --destaque: #ff5a5c;
+  --destaque-escuro: #cc0c0f;
+  position: fixed;
+  z-index: 8;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100vw - 20px);
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 8px 8px 12px;
+  font-size: 13px;
+  color: var(--texto);
+  background: var(--fundo-painel-forte);
+}
+.dica-andar .botao.primario:hover,
+.barra-ra .botao.primario:hover { background: #e0181b; }
+.dica-andar-icone,
+.barra-ra-icone { display: inline-flex; flex: none; color: var(--destaque); }
+.dica-andar-texto,
+.barra-ra-texto { min-width: 0; line-height: 1.35; }
+.barra-ra-texto strong { display: block; }
+.dica-andar .botao,
+.barra-ra .botao { flex: none; min-height: 36px; }
+body.andando .dica { visibility: hidden; }
+@media (max-width: 900px) {
+  .dica-andar { bottom: calc(var(--altura-abas) + 10px); }
+}
+
+/* RA pela câmera: a imagem da câmera ocupa a tela, por trás do canvas (transparente); a interface some */
+.video-ra { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #000; }
+html:has(body.ra-camera),
+body.ra-camera { background: #000; }
+body.ra-camera > *:not(#cena):not(.video-ra):not(.barra-ra):not(dialog) { display: none !important; }
+.barra-ra { top: calc(10px + env(safe-area-inset-top, 0px)); bottom: auto; }
+
+/* celular deitado: a barra de cima em duas linhas (título, conexão e botões; modos), sobra mais altura para o torno */
+@media (max-width: 900px) and (max-height: 500px) and (orientation: landscape) {
+  .topo {
+    grid-template-columns: minmax(0, 1fr) auto auto auto;
+    grid-template-areas: "marca conexao extra acoes" "modos modos modos modos";
+    gap: 5px 8px;
+    padding: 5px 8px;
+  }
+  .topo .conexao { max-width: 220px; }
+  .modos .botao { padding: 6px 2px; }
 }
