@@ -1,7 +1,7 @@
 // Gera as sessões de exemplo em public/sessoes/ a partir do modelo de simulação.
 //   npm run sessoes
 // Os títulos não revelam a causa: a turma investiga pelos sinais e pelo contexto.
-// O gabarito de cada sessão fica nos desafios (src/config/desafios.js), não no arquivo.
+// Sessões de exemplo para o modo Replay.
 import { writeFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";

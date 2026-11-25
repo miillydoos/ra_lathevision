@@ -1,16 +1,15 @@
 # Laboratório de Monitoramento e Diagnóstico — Torno ROMI T 350
 
 Aplicação Babylon.js (tela, RV e RA) em que o aluno explora o torno em 3D, acompanha quatro grandezas medidas
-(nível de óleo, corrente, vibração e rotação) e resolve situações de manutenção.
+(nível de óleo, corrente, vibração e rotação) e analisa situações de manutenção.
 
-Reúne os projetos 1, 2 e 4 da proposta em quatro modos:
+Reúne os projetos 1, 2 e 4 da proposta em três modos:
 
 | Modo | Para que serve |
 |---|---|
 | **Ao vivo** | Acompanha o torno real (ESP32 → broker MQTT → app, inclusive na RA, ou WebSocket direto no IP do ESP32), mostra a idade da última leitura e grava a sessão. |
 | **Simulação** | Funciona sem sensores. O professor controla a operação (ciclo típico ou manual), aplica situações, simula falha de sensor e acelera o tempo. |
 | **Replay** | Reproduz uma sessão gravada: pausar, voltar, ir a um instante clicando no gráfico, marcar instantes e comparar curvas. |
-| **Desafio** | O professor escolhe ou sorteia uma situação oculta; a turma registra evidências (também no headset), responde e recebe a avaliação. |
 
 ## Como rodar
 
@@ -29,7 +28,7 @@ npm run dev          # http://localhost:5173
   Publicar a raiz do repositório (“Deploy from a branch”) serve o código-fonte cru e causa o erro
   `Failed to resolve module specifier "@babylonjs/core"`.
 
-## As cinco etapas
+## As quatro etapas
 
 | Etapa | Entrega | Arquivos principais |
 |---|---|---|
@@ -37,7 +36,6 @@ npm run dev          # http://localhost:5173
 | 2. Indicadores | Estados Normal / Atenção / Alarme / Sem dados (cor + ícone + texto), cartões com minigráfico, detalhe com limites, estatísticas, cuidados de interpretação e tabela; comparação em pequenos múltiplos; indicador de conexão. | `src/dados/fluxo.js`, `src/ui/sensoresUI.js`, `src/ui/graficos.js`, `public/config.json` |
 | 3. Fontes de dados | WebSocket direto no IP do ESP32 ou MQTT sobre WebSocket, modelo de simulação, painel do professor, configurações (broker, limites, tipo de sensor de nível). | `src/fontes/*`, `src/simulacao/*`, `src/ui/painelSimulacao.js`, `src/ui/configuracoesUI.js` |
 | 4. Registro e replay | Gravação de sessões (IndexedDB + download .json), quatro sessões de exemplo, reprodução sincronizada com o modelo, marcadores do aluno. | `src/dados/gravador.js`, `src/fontes/fonteReplay.js`, `src/ui/painelReplay.js`, `public/sessoes/` |
-| 5. Desafios | Atrito no cabeçote, nível baixo de óleo e vibração elevada, com situação oculta, registro de evidências, resposta, avaliação por critérios e relatório. | `src/config/desafios.js`, `src/ui/painelDesafio.js` |
 
 ## Conexão ao vivo
 
@@ -129,15 +127,6 @@ pelo modelo de simulação (`npm run sessoes`) e têm títulos neutros; a causa 
 
 A Sessão 02 é a atividade da proposta: localizar quando a vibração começou, o que mudou junto e propor inspeções.
 
-## Desafio em aula
-
-1. Professor: **Desafio** → escolha a situação ou “Sortear” → velocidade (5× é um bom ponto de partida) → **Iniciar**.
-2. A máquina começa normal; a alteração se inicia sem aviso entre 40 s e 90 s de simulação.
-3. A turma registra evidências (botão no rodapé ou no painel do headset) e clica em **Responder**.
-4. A avaliação (100 pontos) pesa evidências (40), sequência dos sinais (15), hipótese (20), inspeção (20) e registros (5).
-   Citar algo que não aconteceu desconta; propor troca de peça antes de confirmar a causa também.
-5. **Revelar situação** mostra a explicação; **Baixar relatório** gera um .txt com evidências, respostas e avaliação.
-
 ## Painéis recolhíveis (desktop e celular)
 
 Uma doca de abas embaixo abre e recolhe os painéis **Peças**, **Medições** e **Controles** (painel do modo atual).
@@ -148,9 +137,9 @@ ficar no centro da área livre.
 
 - **Desktop:** os painéis podem ficar abertos juntos. Recolhem para as laterais e para baixo pelo ×, pela aba da
   doca ou com **Esc** (o último aberto).
-- **Celular (até 900 px):** topo compacto (título, conexão e os quatro modos); os painéis viram folhas que sobem
+- **Celular (até 900 px):** topo compacto (título, conexão e os três modos); os painéis viram folhas que sobem
   da base, uma por vez, e recolhem pelo ×, tocando de novo na aba, arrastando o cabeçalho para baixo ou com o
-  **Voltar** do aparelho. Configurações e a resposta do desafio abrem em tela cheia, com × e botões fixos no rodapé.
+  **Voltar** do aparelho. Configurações abrem em tela cheia, com × e botões fixos no rodapé.
 
 Tudo isso está em `src/ui/layoutPaineis.js` e no fim de `src/style.css`; a lógica do app é a mesma em qualquer tela.
 Para ver o layout de celular no computador: F12 → Ctrl+Shift+M (modo dispositivo).
@@ -159,7 +148,7 @@ Para ver o layout de celular no computador: F12 → Ctrl+Shift+M (modo dispositi
 
 O HUD HTML não aparece em RV/RA. O painel 3D ao lado da área do operador mostra as quatro leituras, o gráfico (toque numa
 linha para trocar a grandeza), **Comparar curvas**, **Aproximar painel** (traz para perto do rosto) e os controles do modo
-(reprodução no Replay, registro de evidência no Desafio). Aponte o controle para o cabeçote, a placa ou os sensores para
+(reprodução no Replay). Aponte o controle para o cabeçote, a placa ou os sensores para
 abrir as medições.
 
 ## Ambiente 360°, apresentação e sensores
@@ -178,7 +167,7 @@ abrir as medições.
   abre ou fecha. O botão **Sensores** no topo (ou "Abrir tampas e ver sensores" no tour) abre as duas e leva a câmera
   até a do lado em que ela está: a caixa de engrenagens fica na lateral esquerda do cabeçote e o painel elétrico na
   traseira do gabinete do cabeçote (porta com dobradiça do lado do cabeçote). No painel fica o sensor de corrente, no
-  cabo do motor; na caixa, nível de óleo (ultrassônico) e rotação (sensor de velocidade), cada um com LED e um balão azul translúcido com o valor
+  cabo do motor; na caixa, nível de óleo (ultrassônico) e rotação (sensor de velocidade), cada um com LED e um balão vermelho translúcido com o valor
   (`src/cena/baloes.js`). Os balões ficam só nos sensores, grandes e sempre à mostra (mesmo com as tampas
   fechadas), crescem com a distância para serem lidos de longe, pulsam em alarme e somem quando a câmera está do
   outro lado da máquina; o da vibração fica acima da caixa de monitoramento. Clicar num balão (ou no sensor) traz só

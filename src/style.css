@@ -95,12 +95,16 @@ button { font-family: inherit; }
 .botao[aria-pressed="true"], .botao.ativo { background: var(--destaque-escuro); border-color: var(--destaque); }
 .botao.primario { background: var(--destaque-escuro); border-color: var(--destaque); }
 .botao.primario:hover { background: #0d6fc4; }
+.topo .botao.primario:hover { background: #e0181b; }
 .botao:disabled { opacity: 0.45; cursor: not-allowed; }
 .botao.icone { padding: 6px 8px; display: inline-flex; align-items: center; }
 .botao svg { width: 16px; height: 16px; }
 
 /* ---------- Topo ---------- */
+/* barra de cima no vermelho da logo LatheVision: modo ativo e botões ligados */
 .topo {
+  --destaque: #ff5a5c;
+  --destaque-escuro: #cc0c0f;
   grid-area: topo;
   display: flex;
   align-items: center;
@@ -490,11 +494,6 @@ canvas.navegavel { cursor: pointer; }
   .conexao { max-width: 240px; }
 }
 
-/* ---------- Desafio ---------- */
-.texto-desafio { flex: 2 1 360px; font-size: 13px; line-height: 1.5; color: #dfe5eb; }
-.texto-desafio p { margin: 0 0 6px; }
-.texto-desafio ol { margin: 0 0 6px; padding-left: 20px; }
-.corpo-desafio { display: grid; grid-template-columns: minmax(300px, 1.2fr) minmax(300px, 1fr); gap: 14px; align-items: start; }
 .registros { min-width: 0; }
 .lista-registros { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; max-height: 170px; overflow-y: auto; font-size: 12.5px; }
 .lista-registros li { position: relative; padding-right: 18px; }
@@ -516,7 +515,6 @@ canvas.navegavel { cursor: pointer; }
 .opcoes-linha { display: flex; flex-wrap: wrap; gap: 4px 16px; }
 textarea { resize: vertical; width: 100%; }
 @media (max-width: 900px) {
-  .corpo-desafio { grid-template-columns: 1fr; }
 }
 
 .cab-sensores, .info-fonte { flex-shrink: 0; }
@@ -685,13 +683,12 @@ textarea { resize: vertical; width: 100%; }
   .folha .painel-simulacao > .cab-modo { display: none; } /* o cabeçalho da folha já diz o modo */
   .folha .painel-modo.recolhido .corpo-modo { display: flex; }
   .folha .painel-replay .corpo-replay,
-  .folha .painel-desafio .corpo-desafio { display: grid; }
 
   /* conteúdo dos modos em uma coluna */
   .cab-modo { flex-wrap: wrap; }
   .cab-modo select { max-width: 100%; flex: 1 1 100%; }
   .grupo-controle { min-width: 0; flex: 1 1 100%; }
-  .corpo-replay, .corpo-desafio { grid-template-columns: minmax(0, 1fr); }
+  .corpo-replay { grid-template-columns: minmax(0, 1fr); }
   .gravacao { flex: 1 1 100%; }
   .linha-marcar { flex-wrap: wrap; }
   .linha-marcar input { flex: 1 1 100%; }

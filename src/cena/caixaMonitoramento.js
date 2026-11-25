@@ -102,12 +102,12 @@ export function criarCaixaMonitoramento({ scene, camera, selecao, fluxo, config 
   raiz.rotationQuaternion = Quaternion.RotationAxis(Axis.Y, CAIXA.giro);
   const malhas = raiz.getChildMeshes(false);
   const chamada = criarChamadaVibracao(scene, raiz); // fora de `malhas`: não é clicável nem muda de grupo
-  // com a caixa pousada no torno, o balão da vibração fica acima dela (grande e azul, como os dos outros
+  // com a caixa pousada no torno, o balão da vibração fica acima dela (grande e vermelho, como os dos outros
   // sensores); clicar nele traz a caixa para a frente da tela
   const topoCaixa = new Vector3(CAIXA.posicao[0], CAIXA.posicao[1] + H, CAIXA.posicao[2]);
   const balao = criarBalao(scene, { nome: "caixaMonitoramento_vibracao", ancora: topoCaixa.add(new Vector3(0, 0.1, 0)) });
   const linhaBalao = MeshBuilder.CreateLines("caixaMonitoramento_linhaBalao", { points: [balao.ancora, topoCaixa] }, scene);
-  linhaBalao.color = new Color3(0.55, 0.8, 1);
+  linhaBalao.color = new Color3(1, 0.35, 0.35);
   linhaBalao.isPickable = false;
   let balaoVisivel = true; // botão de rótulos do painel de RV
 
@@ -687,7 +687,7 @@ function criarChamadaVibracao(scene, raiz) {
   led.position.copyFrom(ponta);
   // do centro da etiqueta (ela cobre o pedaço de dentro) até o LED
   const linha = MeshBuilder.CreateLines("caixaMonitoramento_linhaVibracao", { points: [ancora.position.clone(), ponta] }, scene);
-  linha.color = new Color3(0.55, 0.8, 1);
+  linha.color = new Color3(1, 0.35, 0.35);
   for (const m of [linha, led, etiqueta]) {
     m.parent = m === etiqueta ? ancora : no;
     m.renderingGroupId = 3;

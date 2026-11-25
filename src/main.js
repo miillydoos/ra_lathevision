@@ -27,7 +27,6 @@ import { criarGravador } from "./dados/gravador.js";
 import { criarFonteReplay } from "./fontes/fonteReplay.js";
 import { criarPainelReplay } from "./ui/painelReplay.js";
 import { criarGravacaoUI } from "./ui/gravacaoUI.js";
-import { criarPainelDesafio } from "./ui/painelDesafio.js";
 import { criarLayoutPaineis } from "./ui/layoutPaineis.js";
 import { criarTour360 } from "./ui/tour360.js";
 import { concluirCarregamento, erroCarregamento, progressoCarregamento } from "./ui/carregamento.js";
@@ -192,18 +191,6 @@ async function iniciar() {
     info: () => painelReplay.info(),
   });
 
-  const painelDesafio = criarPainelDesafio({ simulacao, fluxo, config, sensoresUI, painelXR });
-  modos.registrar({
-    id: "desafio",
-    nome: "Desafio",
-    dica: "O professor aplica uma situação oculta; a turma coleta evidências e propõe a inspeção",
-    fonte: simulacao,
-    painel: painelDesafio.el,
-    aoEntrar: () => painelDesafio.aoEntrar(),
-    aoSair: () => painelDesafio.aoSair(painelSimulacao.cenarioAtivo),
-    info: () => painelDesafio.info(),
-  });
-
   // gravação nos modos Ao vivo e Simulação
   const abrirNoReplay = async (sessao) => {
     await modos.ativar("replay");
@@ -215,6 +202,7 @@ async function iniciar() {
     .appendChild(criarGravacaoUI({ gravador, origem: () => "simulacao", aoAbrirReplay: abrirNoReplay }).el);
 
   await modos.ativar(parametros.get("modo") ?? "simulacao");
+  if (!modos.atual) await modos.ativar("simulacao"); // ?modo= com um modo que não existe (ex.: o antigo desafio)
 
   // painéis recolhíveis com doca de abas, no desktop e no celular (só interface)
   const layout = criarLayoutPaineis({ camera, scene });
@@ -270,7 +258,6 @@ async function iniciar() {
     gravador,
     replay,
     painelReplay,
-    painelDesafio,
     layout,
     sala,
     tour,
