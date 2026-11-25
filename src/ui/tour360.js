@@ -7,7 +7,6 @@ import { svgIcone } from "../util/icones.js";
 const PAINEIS = [
   ["pecas", "#lateral-esquerda"],
   ["medicoes", "#lateral-direita"],
-  ["controles", "#rodape"],
 ];
 
 /**

@@ -62,7 +62,7 @@ function numeros(config, id, s) {
 
 /**
  * Relatório e histórico do monitoramento: vista da aba "Histórico" (na barra dos modos, ao lado de
- * Ao vivo, Simulação e Replay). Ocupa a área abaixo da barra de cima sem trocar a fonte de dados:
+ * Ao vivo e Simulação). Ocupa a área abaixo da barra de cima sem trocar a fonte de dados:
  * o modo em uso continua rodando por trás e o histórico segue sendo registrado.
  * Mostra o resumo por grandeza (Ao vivo ou Simulação) e a linha do tempo de eventos,
  * e exporta o relatório (.html, pronto para imprimir ou salvar em PDF) e o histórico (.csv).
@@ -178,7 +178,7 @@ export function criarHistoricoUI({ historico, config, aoFechar = () => fechar() 
     aoVivoEl.dataset.origem = agora ?? "replay";
     aoVivoEl.textContent = agora
       ? `Registrando agora: ${ORIGENS[agora]}. O monitoramento continua enquanto você vê o relatório; toque num modo acima para voltar ao torno.`
-      : "Modo Replay: ele só reproduz sessões gravadas e não entra no histórico. Toque em Ao vivo ou Simulação para voltar a registrar.";
+      : "Nenhum modo registrando agora. Toque em Ao vivo ou Simulação para voltar a registrar.";
 
     for (const b of vista.querySelectorAll("[data-origem]")) b.setAttribute("aria-pressed", String(b.dataset.origem === origemVista));
 

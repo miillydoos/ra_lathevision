@@ -1,7 +1,7 @@
 import { criarEmissor } from "./util/emissor.js";
 
 /**
- * Modos da aplicação (Ao vivo / Simulação / Replay). Cada modo traz sua fonte de dados,
+ * Modos da aplicação (Ao vivo / Simulação). Cada modo traz sua fonte de dados,
  * o painel do rodapé e um texto curto de contexto.
  *
  * Abas (ex.: Histórico) ficam na mesma barra, mas não trocam a fonte: abrem uma vista por cima

@@ -7,7 +7,8 @@ export const suportaCamera = () => Boolean(navigator.mediaDevices?.getUserMedia)
 /**
  * RA pela câmera do aparelho (para celulares sem WebXR, como o iPhone): a imagem da câmera traseira fica por trás
  * do torno 3D, sem a sala. O torno continua vivo: placa girando, balões com as medições e cores de estado.
- * Arrastar gira o torno e a pinça aproxima/afasta (a câmera orbital de sempre). Não há rastreamento do piso:
+ * Arrastar gira o torno e a pinça aproxima/afasta (a câmera orbital de sempre). O botão redondo tira uma foto
+ * (câmera + torno + balões) que pode ser salva ou compartilhada. Não há rastreamento do piso:
  * para pôr o torno no chão em tamanho real use a RA completa (WebXR no Android ou AR Quick Look no iPhone).
  */
 export function criarRACamera({ scene, camera, sala, piso, ceu, aoMudar }) {
@@ -33,6 +34,103 @@ export function criarRACamera({ scene, camera, sala, piso, ceu, aoMudar }) {
     <button type="button" class="botao primario">Sair</button>`;
   barra.querySelector("button").addEventListener("click", () => sair());
   document.body.appendChild(barra);
+
+  // ---------- foto: imagem da câmera + torno 3D (com os balões das medições), do jeito que aparece na tela
+  const obturador = document.createElement("button");
+  obturador.type = "button";
+  obturador.className = "obturador-ra";
+  obturador.hidden = true;
+  obturador.setAttribute("aria-label", "Tirar foto");
+  obturador.title = "Tirar foto";
+  obturador.innerHTML = `<span aria-hidden="true">${svgIcone("camera", { tamanho: 26 })}</span>`;
+  obturador.addEventListener("click", () => tirarFoto());
+  document.body.appendChild(obturador);
+
+  const foto = document.createElement("div");
+  foto.className = "foto-ra";
+  foto.hidden = true;
+  foto.setAttribute("role", "dialog");
+  foto.setAttribute("aria-label", "Foto da RA");
+  foto.innerHTML = `
+    <img alt="Foto do torno em RA" />
+    <div class="foto-ra-acoes">
+      <button type="button" class="botao" data-acao="outra">Tirar outra</button>
+      <button type="button" class="botao primario" data-acao="salvar">${svgIcone("baixar", { tamanho: 16 })}<span>Salvar foto</span></button>
+    </div>`;
+  document.body.appendChild(foto);
+  const flash = document.createElement("div");
+  flash.className = "flash-ra";
+  document.body.appendChild(flash);
+
+  let ultimaFoto = null; // { blob, url, nome }
+  function fecharFoto() {
+    foto.hidden = true;
+    if (ultimaFoto) URL.revokeObjectURL(ultimaFoto.url);
+    ultimaFoto = null;
+  }
+  foto.addEventListener("click", async (e) => {
+    const acao = e.target.closest("[data-acao]")?.dataset.acao;
+    if (acao === "outra") fecharFoto();
+    if (acao === "salvar" && ultimaFoto) await salvarFoto(ultimaFoto);
+  });
+
+  function tirarFoto() {
+    const engine = scene.getEngine();
+    const tela = engine.getRenderingCanvas();
+    // logo depois de desenhar o quadro o buffer do WebGL ainda está inteiro: dá para copiar
+    scene.onAfterRenderObservable.addOnce(() => {
+      const w = tela.width;
+      const h = tela.height;
+      const c = document.createElement("canvas");
+      c.width = w;
+      c.height = h;
+      const ctx = c.getContext("2d");
+      const vw = video.videoWidth;
+      const vh = video.videoHeight;
+      if (vw && vh) {
+        // mesmo recorte do object-fit: cover da tela
+        const s = Math.max(w / vw, h / vh);
+        ctx.drawImage(video, (w - vw * s) / 2, (h - vh * s) / 2, vw * s, vh * s);
+      }
+      ctx.drawImage(tela, 0, 0, w, h);
+      c.toBlob(
+        (blob) => {
+          if (!blob) return;
+          if (ultimaFoto) URL.revokeObjectURL(ultimaFoto.url);
+          const d = new Date();
+          const p = (n) => String(n).padStart(2, "0");
+          const nome = `torno-ra-${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}.jpg`;
+          ultimaFoto = { blob, url: URL.createObjectURL(blob), nome };
+          foto.querySelector("img").src = ultimaFoto.url;
+          foto.hidden = false;
+        },
+        "image/jpeg",
+        0.92,
+      );
+    });
+    flash.classList.remove("ativo");
+    void flash.offsetWidth; // reinicia a animação
+    flash.classList.add("ativo");
+  }
+
+  // no celular abre o "Compartilhar" do aparelho (lá tem "Salvar imagem"); no computador, baixa o arquivo
+  async function salvarFoto({ blob, url, nome }) {
+    const arquivo = new File([blob], nome, { type: "image/jpeg" });
+    if (navigator.canShare?.({ files: [arquivo] })) {
+      try {
+        await navigator.share({ files: [arquivo], title: "Torno em RA" });
+        return;
+      } catch (erro) {
+        if (erro?.name === "AbortError") return; // a pessoa fechou o compartilhar
+      }
+    }
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = nome;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
 
   async function entrar() {
     if (ativo) return;
@@ -70,6 +168,7 @@ export function criarRACamera({ scene, camera, sala, piso, ceu, aoMudar }) {
 
     document.body.classList.add("ra-camera");
     barra.hidden = false;
+    obturador.hidden = false;
     aoMudar?.(true);
   }
 
@@ -92,16 +191,23 @@ export function criarRACamera({ scene, camera, sala, piso, ceu, aoMudar }) {
     }
     document.body.classList.remove("ra-camera");
     barra.hidden = true;
+    obturador.hidden = true;
+    fecharFoto();
     aoMudar?.(false);
   }
 
-  window.addEventListener("keydown", (e) => e.key === "Escape" && sair());
+  window.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape" || !ativo) return;
+    if (!foto.hidden) fecharFoto();
+    else sair();
+  });
   // aba em segundo plano: a câmera desliga (o iOS a corta de qualquer jeito)
   document.addEventListener("visibilitychange", () => document.visibilityState === "hidden" && sair());
 
   return {
     entrar,
     sair,
+    tirarFoto,
     get ativo() {
       return ativo;
     },

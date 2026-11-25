@@ -6,7 +6,7 @@ const CONSULTA_CELULAR = "(max-width: 900px)";
 /**
  * Painéis recolhíveis (só interface; não muda a lógica do app).
  *
- * Doca de abas com Peças, Medições e Controles do modo atual. Cada painel tem cabeçalho com ×.
+ * Doca de abas com Peças e Medições. Cada painel tem cabeçalho com ×.
  * - Desktop: os painéis ficam nas laterais e embaixo e podem ficar abertos juntos; começam recolhidos.
  *   Esc recolhe o último aberto.
  * - Celular: os painéis viram folhas que sobem da base, uma por vez; recolhem pelo ×, pela aba,
@@ -26,14 +26,7 @@ export function criarLayoutPaineis({ camera = null, scene = null, vistas = [] } 
   const folhas = [
     { id: "pecas", el: $("#lateral-esquerda"), rotulo: "Peças", titulo: () => "Componentes", icone: "camadas" },
     { id: "medicoes", el: $("#lateral-direita"), rotulo: "Medições", titulo: () => "Medições", icone: "grafico" },
-    {
-      id: "controles",
-      el: $("#rodape"),
-      rotulo: "Controles",
-      // o modo em uso (com a aba Histórico aberta, o botão pressionado é o dela)
-      titulo: () => `Controles · ${$("#modos .em-uso")?.textContent ?? ""}`,
-      icone: "controles",
-    },
+    // (a aba Controles, com o painel do modo em #rodape, foi retirada)
   ];
   const porId = (id) => folhas.find((f) => f.id === id);
   const aberta = (f) => !f.el.classList.contains("oculta");

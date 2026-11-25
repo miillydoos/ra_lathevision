@@ -186,7 +186,7 @@ export const PARADAS_360 = [
       ["Caixa de engrenagens", "Óleo e rotação"],
       ["Caixa de monitoramento", "Vibração (MPU-6050)"],
       ["Comunicação", "ESP32 → WebSocket (IP) ou MQTT"],
-      ["Modos", "Ao vivo, Simulação e Replay"],
+      ["Modos", "Ao vivo e Simulação"],
     ],
   },
 ];

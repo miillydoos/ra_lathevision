@@ -27,10 +27,6 @@ import { criarModos } from "./modos.js";
 import { criarPainelSimulacao } from "./ui/painelSimulacao.js";
 import { criarPainelAoVivo } from "./ui/painelAoVivo.js";
 import { criarConfiguracoesUI } from "./ui/configuracoesUI.js";
-import { criarGravador } from "./dados/gravador.js";
-import { criarFonteReplay } from "./fontes/fonteReplay.js";
-import { criarPainelReplay } from "./ui/painelReplay.js";
-import { criarGravacaoUI } from "./ui/gravacaoUI.js";
 import { criarLayoutPaineis } from "./ui/layoutPaineis.js";
 import { criarTour360 } from "./ui/tour360.js";
 import { criarHistorico } from "./dados/historico.js";
@@ -214,15 +210,13 @@ async function iniciar() {
         : `Torno real · ESP32 ${config.websocket?.ip || "(sem IP)"}`,
   });
 
-  const gravador = criarGravador({ fluxo, config });
   const simulacao = criarFonteSimulada({ config });
   const painelSimulacao = criarPainelSimulacao({
     simulacao,
     aoMudar: () => modos.atualizarInfo(),
-    // a situação aplicada entra na linha do tempo da gravação
+    // a situação aplicada entra no histórico do monitoramento
     aoAplicarCenario: (c) => {
       const texto = c ? `Situação aplicada: ${c.nome}` : "Situação removida";
-      gravador.anotar(texto);
       historico.anotar(texto, "situacao");
     },
   });
@@ -240,32 +234,8 @@ async function iniciar() {
     },
   });
 
-  gravador.on("estado", (gravando) => historico.anotar(gravando ? "Gravação de sessão iniciada" : "Gravação de sessão encerrada", "gravacao"));
-
-  const replay = criarFonteReplay();
-  const painelReplay = criarPainelReplay({ replay, sensoresUI, painelXR });
-  modos.registrar({
-    id: "replay",
-    nome: "Replay",
-    dica: "Reproduz uma sessão gravada: pausar, voltar, marcar instantes e comparar curvas",
-    fonte: replay,
-    painel: painelReplay.el,
-    aoEntrar: () => painelReplay.aoEntrar(),
-    aoSair: () => painelReplay.aoSair(),
-    info: () => painelReplay.info(),
-  });
-
-  // gravação nos modos Ao vivo e Simulação
-  const abrirNoReplay = async (sessao) => {
-    await modos.ativar("replay");
-    await painelReplay.abrirSessao(sessao);
-  };
-  painelAoVivo.slotGravacao.appendChild(criarGravacaoUI({ gravador, origem: () => "aoVivo", aoAbrirReplay: abrirNoReplay }).el);
-  painelSimulacao.el
-    .querySelector(".corpo-modo")
-    .appendChild(criarGravacaoUI({ gravador, origem: () => "simulacao", aoAbrirReplay: abrirNoReplay }).el);
-
-  // relatório e histórico do monitoramento: aba "Histórico" ao lado de Ao vivo, Simulação e Replay.
+  // relatório e histórico do monitoramento: aba "Histórico" ao lado de Ao vivo e Simulação.
+  // (O modo Replay e a aba Controles foram retirados: os painéis dos modos ficam no #rodape, escondido.)
   // Não troca a fonte: o modo em uso continua rodando por trás e o histórico segue registrando.
   const historicoUI = criarHistoricoUI({ historico, config, aoFechar: () => modos.fecharAba() });
   modos.registrarAba({
@@ -370,11 +340,8 @@ async function iniciar() {
     simulacao,
     modos,
     painelSimulacao,
-    gravador,
     historico,
     historicoUI,
-    replay,
-    painelReplay,
     layout,
     sala,
     andar,

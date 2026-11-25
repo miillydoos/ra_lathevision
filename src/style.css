@@ -1354,8 +1354,55 @@ body.andando .dica { visibility: hidden; }
 .video-ra { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #000; }
 html:has(body.ra-camera),
 body.ra-camera { background: #000; }
-body.ra-camera > *:not(#cena):not(.video-ra):not(.barra-ra):not(dialog) { display: none !important; }
+body.ra-camera > *:not(#cena):not(.video-ra):not(.barra-ra):not(.obturador-ra):not(.foto-ra):not(.flash-ra):not(dialog) { display: none !important; }
 .barra-ra { top: calc(10px + env(safe-area-inset-top, 0px)); bottom: auto; }
+
+/* botão de foto da RA (obturador) e a foto tirada, com "flash" */
+.obturador-ra {
+  position: fixed;
+  z-index: 8;
+  left: 50%;
+  bottom: calc(22px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 4px solid #fff;
+  background: #cc0c0f;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.35), 0 6px 18px rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.obturador-ra span { display: inline-flex; }
+.obturador-ra:active { transform: translateX(-50%) scale(0.92); }
+.obturador-ra:focus-visible { outline: 3px solid #fff; outline-offset: 4px; }
+.flash-ra { position: fixed; inset: 0; z-index: 9; background: #fff; opacity: 0; pointer-events: none; }
+.flash-ra.ativo { animation: flash-ra 0.35s ease-out; }
+@keyframes flash-ra { from { opacity: 0.85; } to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .flash-ra.ativo { animation: none; } }
+.foto-ra {
+  --destaque: #ff5a5c;
+  --destaque-escuro: #cc0c0f;
+  position: fixed;
+  z-index: 10;
+  inset: 0;
+  padding: calc(16px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px));
+  box-sizing: border-box;
+  background: rgba(0, 0, 0, 0.88);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+.foto-ra img { max-width: 100%; max-height: calc(100% - 70px); object-fit: contain; border-radius: 10px; border: 2px solid rgba(255, 255, 255, 0.85); box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5); }
+.foto-ra-acoes { display: flex; gap: 10px; width: min(420px, 100%); }
+.foto-ra-acoes .botao { flex: 1 1 0; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-size: 15px; }
+.foto-ra .botao.primario:hover { background: #e0181b; }
 
 /* celular deitado: a barra de cima em duas linhas (título, conexão e botões; modos), sobra mais altura para o torno */
 @media (max-width: 900px) and (max-height: 500px) and (orientation: landscape) {
