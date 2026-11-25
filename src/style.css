@@ -207,21 +207,97 @@ button { font-family: inherit; }
 .rodape:empty { display: none; }
 
 /* ---------- Carregamento ---------- */
+/* Tela de entrada LatheVision: o fundo é o mesmo vermelho da logo, então a imagem não tem emenda;
+   a vinheta fica por cima de tudo (fundo e logo juntos) e só escurece as bordas da tela. */
 #carregando {
+  --lv-vermelho: #cc0c0f;
+  --lv-creme: #f9f0e1;
+  --lv-preto: #20201e;
+  --tam-logo: min(460px, 84vw, 62vh);
   position: fixed;
   inset: 0;
   display: grid;
   place-items: center;
-  background: radial-gradient(circle at 50% 40%, #24313f, #0f151c);
+  background: var(--lv-vermelho);
   z-index: 10;
-  transition: opacity 0.4s;
+  overflow: hidden;
+  transition: opacity 0.4s ease;
+}
+#carregando::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse 75% 70% at 50% 45%, transparent 55%, rgba(60, 0, 2, 0.42) 100%);
 }
 #carregando.saindo { opacity: 0; pointer-events: none; }
-.caixa-carregando { display: flex; flex-direction: column; gap: 10px; align-items: center; width: min(320px, 80vw); }
-.barra { width: 100%; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.12); overflow: hidden; }
-.preenchimento { height: 100%; width: 0; background: var(--destaque); transition: width 0.2s; }
-#progresso-texto { color: var(--texto-sutil); font-size: 12px; }
-#carregando.erro .caixa-carregando strong { color: var(--alarme); }
+#carregando.saindo .logo-carregando { transform: scale(1.04); }
+.caixa-carregando {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: var(--tam-logo);
+}
+.logo-carregando {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  user-select: none;
+  -webkit-user-drag: none;
+  transition: transform 0.45s ease;
+  animation: lv-entrada 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+/* barra e texto alinhados aos traços do slogan, logo abaixo dele (a imagem tem margem vermelha embaixo) */
+#carregando .barra {
+  width: 72%;
+  height: 5px;
+  margin-top: calc(var(--tam-logo) * -0.09);
+  border-radius: 99px;
+  background: rgba(32, 32, 30, 0.38);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  animation: lv-aparecer 0.6s 0.35s ease both;
+}
+#carregando .preenchimento {
+  height: 100%;
+  width: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--lv-creme) 0%, #fff 50%, var(--lv-creme) 100%) 0 0 / 200% 100%;
+  box-shadow: 0 0 10px rgba(255, 240, 220, 0.55);
+  transition: width 0.25s ease;
+  animation: lv-brilho 1.6s linear infinite;
+}
+.linha-progresso {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  width: 72%;
+  margin-top: 10px;
+  color: var(--lv-creme);
+  font-size: 12.5px;
+  letter-spacing: 0.04em;
+  animation: lv-aparecer 0.6s 0.45s ease both;
+}
+.linha-progresso strong { font-weight: 600; opacity: 0.92; }
+#progresso-texto { font-variant-numeric: tabular-nums; font-weight: 700; }
+#carregando.erro .barra { display: none; }
+#carregando.erro .linha-progresso { flex-direction: column; align-items: center; text-align: center; margin-top: 0; }
+#carregando.erro .linha-progresso strong { color: #fff; font-size: 14px; opacity: 1; }
+
+@keyframes lv-entrada {
+  from { opacity: 0; transform: translateY(12px) scale(0.97); }
+}
+@keyframes lv-aparecer {
+  from { opacity: 0; }
+}
+@keyframes lv-brilho {
+  to { background-position: -200% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .logo-carregando, #carregando .barra, #carregando .preenchimento, .linha-progresso { animation: none; }
+}
 
 /* ---------- Painel de medições ---------- */
 .painel-sensores { gap: 8px; overflow: hidden; }

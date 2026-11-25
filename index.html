@@ -3,9 +3,13 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>Laboratório do Torno</title>
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%230a5fa8'/%3E%3Cpath d='M4 15h16M6 9h5v6H6zM14 11h5v4h-5z' stroke='white' stroke-width='1.6' fill='none'/%3E%3C/svg%3E" />
-    <meta name="description" content="Laboratório de Monitoramento e Diagnóstico — torno ROMI T 350 em 3D e XR" />
+    <title>LatheVision · Sua produção, sempre à vista</title>
+    <link rel="icon" type="image/png" sizes="48x48" href="./brand/lathevision-48.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="./brand/lathevision-192.png" />
+    <link rel="apple-touch-icon" href="./brand/lathevision-192.png" />
+    <meta name="theme-color" content="#cc0c0f" />
+    <meta name="description" content="LatheVision — monitoramento e diagnóstico do torno ROMI T 350 em 3D e XR" />
+    <link rel="preload" as="image" href="./brand/lathevision.jpg" />
   </head>
   <body>
     <canvas id="cena" aria-label="Torno ROMI T 350 em 3D"></canvas>
@@ -45,9 +49,12 @@
 
     <div id="carregando" role="status" aria-live="polite">
       <div class="caixa-carregando">
-        <strong>Carregando o torno…</strong>
+        <img class="logo-carregando" src="./brand/lathevision.jpg" width="800" height="800" alt="LatheVision — Sua produção, sempre à vista" decoding="async" fetchpriority="high" />
         <div class="barra"><div class="preenchimento" id="progresso"></div></div>
-        <span id="progresso-texto">0%</span>
+        <div class="linha-progresso">
+          <strong>Carregando o torno…</strong>
+          <span id="progresso-texto">0%</span>
+        </div>
       </div>
     </div>
 
