@@ -7,7 +7,7 @@ Reúne os projetos 1, 2 e 4 da proposta em quatro modos:
 
 | Modo | Para que serve |
 |---|---|
-| **Ao vivo** | Acompanha o torno real (ESP32 → WebSocket pelo IP, ou broker MQTT → app), mostra a idade da última leitura e grava a sessão. |
+| **Ao vivo** | Acompanha o torno real (ESP32 → broker MQTT → app, inclusive na RA, ou WebSocket direto no IP do ESP32), mostra a idade da última leitura e grava a sessão. |
 | **Simulação** | Funciona sem sensores. O professor controla a operação (ciclo típico ou manual), aplica situações, simula falha de sensor e acelera o tempo. |
 | **Replay** | Reproduz uma sessão gravada: pausar, voltar, ir a um instante clicando no gráfico, marcar instantes e comparar curvas. |
 | **Desafio** | O professor escolhe ou sorteia uma situação oculta; a turma registra evidências (também no headset), responde e recebe a avaliação. |
@@ -41,9 +41,49 @@ npm run dev          # http://localhost:5173
 
 ## Conexão ao vivo
 
-Em ⚙ **Configurações → Conexão ao vivo** escolha um dos dois caminhos.
+Em ⚙ **Configurações → Conexão ao vivo** escolha um dos dois caminhos. As configurações ficam salvas em cada
+navegador: se um aparelho já tinha escolhido outro caminho, use **Restaurar config.json** nele.
 
-### WebSocket direto no ESP32 (padrão)
+### Broker MQTT (padrão — é o caminho que chega na RA)
+
+```
+ESP32 ──MQTT/TCP 1883──▶ broker ──MQTT/WebSocket (wss, 443)──▶ aplicação (tela, RV e RA)
+```
+
+Firmware em `exemplos/esp32/torno_monitor/`, para o ESP32-C3 Super Mini da caixa de monitoramento (bibliotecas
+**PubSubClient** e **LiquidCrystal I2C**). Ele lê os quatro sensores (SCT-013, MPU-6050, HC-SR04 e o sensor de
+velocidade de 20 pulsos por volta), mostra as leituras no **LCD 16×2** da tampa, nas mesmas páginas da caixa virtual
+do app, e publica a cada 500 ms em `<base>/leituras`. O LCD continua atualizando sem rede; enquanto o broker não
+conecta, aparece uma página com o IP e o estado do MQTT. Ligações e calibração (marcadas com `ADAPTE`) ficam no
+início do arquivo; o Monitor Serial (115200) mostra as leituras e o estado da conexão.
+
+O padrão (`public/config.json`) é o broker público `wss://public.cloud.shiftr.io` (usuário e senha `public`) com o
+tópico base `tormax30/senai/torno01`, os mesmos do firmware. Como ele aceita `wss://` na porta 443, funciona em páginas
+HTTPS (GitHub Pages e headset em RA). É público: qualquer pessoa pode ler e publicar nesses tópicos, então use só para
+dados didáticos.
+
+Tópicos (base configurável):
+
+| Tópico | Conteúdo |
+|---|---|
+| `<base>/oleo`, `/corrente`, `/vibracao`, `/rotacao` | número (`12.4`) ou JSON `{"v": 12.4, "ts": 1760000000000}` |
+| `<base>/leituras` | várias grandezas: `{"ts": …, "corrente": 12.4, "rotacao": 800}` |
+| `<base>/status` | `online` / `offline` (Last Will do ESP32) |
+
+`ts` é opcional. Se o relógio do dispositivo estiver mais de 60 s diferente do navegador (ESP32 sem NTP), vale a hora de chegada.
+
+Para testar sem hardware:
+
+```bash
+npm run broker                                    # broker local: TCP 1883 + WebSocket 9001
+npm run publicador -- --cenario vibracao --apos 30   # faz o papel do ESP32 (usa o modelo da simulação)
+```
+
+Depois, em ⚙ **Configurações**: **Broker MQTT** → endereço `ws://localhost:9001`. Para o broker público, use
+`npm run publicador -- --url mqtt://public.cloud.shiftr.io:1883 --usuario public --senha public`.
+Há um exemplo de configuração do Mosquitto em `exemplos/mosquitto.conf`. Em páginas HTTPS o navegador só aceita `wss://`.
+
+### WebSocket direto no ESP32
 
 ```
 ESP32 (servidor WebSocket, porta 81) ──ws://<ip-do-esp32>:81──▶ aplicação
@@ -63,33 +103,6 @@ A cada 500 ms o ESP32 envia um JSON com as grandezas: `{"oleo": 78, "corrente": 
 
 Para testar sem hardware: `npm run esp32-falso -- --cenario vibracao --apos 30` (faz o papel do ESP32 com o modelo da
 simulação) e use o IP `localhost`, porta 81.
-
-### Broker MQTT
-
-```
-ESP32 ──MQTT/TCP 1883──▶ broker ──MQTT/WebSocket 9001──▶ aplicação
-```
-
-Tópicos (base configurável, padrão `senai/torno01`):
-
-| Tópico | Conteúdo |
-|---|---|
-| `<base>/oleo`, `/corrente`, `/vibracao`, `/rotacao` | número (`12.4`) ou JSON `{"v": 12.4, "ts": 1760000000000}` |
-| `<base>/leituras` | várias grandezas: `{"ts": …, "corrente": 12.4, "rotacao": 800}` |
-| `<base>/status` | `online` / `offline` (Last Will do ESP32) |
-
-`ts` é opcional. Se o relógio do dispositivo estiver mais de 60 s diferente do navegador (ESP32 sem NTP), vale a hora de chegada.
-
-Para testar sem hardware:
-
-```bash
-npm run broker                                    # broker local: TCP 1883 + WebSocket 9001
-npm run publicador -- --cenario vibracao --apos 30   # faz o papel do ESP32 (usa o modelo da simulação)
-```
-
-Depois, em ⚙ **Configurações**: **Broker MQTT** → endereço `ws://localhost:9001`.
-Há um exemplo de firmware em `exemplos/esp32/torno_monitor/` e de configuração do Mosquitto em `exemplos/mosquitto.conf`.
-Em páginas HTTPS o navegador só aceita `wss://`.
 
 ## Limites e estados
 
