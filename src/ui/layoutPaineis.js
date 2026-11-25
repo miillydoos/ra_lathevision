@@ -12,11 +12,13 @@ const CONSULTA_CELULAR = "(max-width: 900px)";
  * - Celular: os painéis viram folhas que sobem da base, uma por vez; recolhem pelo ×, pela aba,
  *   arrastando o cabeçalho para baixo ou com o Voltar do aparelho.
  * - Nos dois casos a vista 3D se desloca para o torno ficar no centro da área livre.
+ * - `vistas` ([{ el, fechar }]): telas que cobrem a área do torno (aba Histórico); Esc e o Voltar do
+ *   celular fecham a que estiver aberta.
  *
  * Os painéis usam a classe "oculta" que o restante do código já liga e desliga,
  * então tudo continua funcionando igual (ex.: tocar num rótulo 3D abre as Medições).
  */
-export function criarLayoutPaineis({ camera = null, scene = null } = {}) {
+export function criarLayoutPaineis({ camera = null, scene = null, vistas = [] } = {}) {
   const mq = window.matchMedia(CONSULTA_CELULAR);
   const celular = () => mq.matches;
   const $ = (s) => document.querySelector(s);
@@ -28,7 +30,8 @@ export function criarLayoutPaineis({ camera = null, scene = null } = {}) {
       id: "controles",
       el: $("#rodape"),
       rotulo: "Controles",
-      titulo: () => `Controles · ${$('#modos [aria-pressed="true"]')?.textContent ?? ""}`,
+      // o modo em uso (com a aba Histórico aberta, o botão pressionado é o dela)
+      titulo: () => `Controles · ${$("#modos .em-uso")?.textContent ?? ""}`,
       icone: "controles",
     },
   ];
@@ -65,6 +68,18 @@ export function criarLayoutPaineis({ camera = null, scene = null } = {}) {
     const b = e.target.closest("[data-folha]");
     if (b) alternar(b.dataset.folha);
   });
+
+  // ---------- altura real da barra de cima (--topo-base): o que fica preso logo abaixo dela
+  // (cartão do componente, apresentação 360°, painel da medida, aba Histórico) não a cobre
+  // quando ela quebra em mais linhas
+  const topo = $(".topo");
+  const medirTopo = () => {
+    const base = Math.round(topo.getBoundingClientRect().bottom);
+    if (base > 0) document.documentElement.style.setProperty("--topo-base", `${base}px`);
+  };
+  new ResizeObserver(medirTopo).observe(topo);
+  window.addEventListener("resize", medirTopo);
+  medirTopo();
 
   function mostrar(id) {
     if (celular()) for (const f of folhas) f.el.classList.toggle("oculta", f.id !== id);
@@ -109,7 +124,9 @@ export function criarLayoutPaineis({ camera = null, scene = null } = {}) {
     camadas--;
     fechandoPeloVoltar = true;
     const dialogo = [...document.querySelectorAll("dialog[open]")].pop();
+    const vista = vistas.find((v) => !v.el.hidden);
     if (dialogo) dialogo.close();
+    else if (vista) vista.fechar();
     else recolherTodas();
   });
 
@@ -140,16 +157,37 @@ export function criarLayoutPaineis({ camera = null, scene = null } = {}) {
   new MutationObserver(() => folhas.forEach((f) => (f.tituloEl.textContent = f.titulo()))).observe($("#modos"), {
     subtree: true,
     attributes: true,
-    attributeFilter: ["aria-pressed"],
+    attributeFilter: ["class"],
   });
 
-  // Esc recolhe o último painel aberto (sem atrapalhar diálogos e campos de texto)
+  // Esc fecha a vista aberta (aba Histórico) ou recolhe o último painel aberto
+  // (sem atrapalhar diálogos e campos de texto)
   window.addEventListener("keydown", (e) => {
     if (e.key !== "Escape" || document.querySelector("dialog[open]")) return;
     if (e.target.closest?.("input, textarea, select")) return;
+    const vista = vistas.find((v) => !v.el.hidden);
+    if (vista) return vista.fechar();
     const ultimo = ordem[ordem.length - 1];
     if (ultimo) recolher(ultimo);
   });
+
+  // ---------- vistas que cobrem a área do torno (aba Histórico): no celular, o Voltar fecha
+  for (const v of vistas) {
+    let empilhada = false;
+    new MutationObserver(() => {
+      if (!v.el.hidden) {
+        if (celular()) recolherTodas(); // a folha aberta desempilha antes de a vista empilhar
+        if (celular() && !empilhada) {
+          empilhar();
+          empilhada = true;
+        }
+      } else if (empilhada) {
+        empilhada = false;
+        if (fechandoPeloVoltar) fechandoPeloVoltar = false;
+        else desempilhar();
+      }
+    }).observe(v.el, { attributes: true, attributeFilter: ["hidden"] });
+  }
 
   // celular: escolher um componente na lista recolhe a folha para mostrar a peça destacada
   $("#lista-componentes").addEventListener("click", (e) => {

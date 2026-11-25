@@ -407,9 +407,11 @@ export function criarSala(scene, { tamanho = 14, altura = 5, luzesExcluidas = []
   const TORNO_EXTRA = { x: 0.013, z: -2.1, larg: 2.9, prof: 1.07 };
   carregarMaquinaGLB(scene, raiz, raiz, "./models/torno.glb", TORNO_EXTRA, luzesExcluidas);
   sombra("mundo", [TORNO_EXTRA.x - TORNO_EXTRA.larg / 2, TORNO_EXTRA.x + TORNO_EXTRA.larg / 2, TORNO_EXTRA.z - TORNO_EXTRA.prof / 2, TORNO_EXTRA.z + TORNO_EXTRA.prof / 2], 0.42, 0.22);
-  furadeira(-5.6, -4.6);
+  // furadeira junto à parede esquerda, com 1,5 m livre até a ponta das bancadas (vista de cima ela parecia em cima delas)
+  furadeira(-6.25, -4.6);
   armarioAzul("piso", 0, 0, 0, { x: 3.0, z: -2.5 }); // carrinho de ferramentas ao lado do D 800
-  banner(6.3, -4.6);
+  // banner ao lado esquerdo do D 800 (o modelo ocupa x 2,2…6,9 e z −6,88…−4,12: em (6,3; −4,6) ele atravessava a máquina)
+  banner(1.5, -4.9);
 
   // ---------- piso: corredor com faixas brancas (ao longo do vidro do escritório), tapete do operador
   // e sombra de contato do torno

@@ -28,6 +28,9 @@ export const ICONES = {
   grafico: "M3 3v18h18M7 14l4-4 4 4 5-6",
   controles: "M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6",
   fechar: "M18 6L6 18M6 6l12 12",
+  historico: "M3 12a9 9 0 1 0 2.64-6.36L3 8M3 3v5h5M12 7v5l3 2",
+  documento: "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M8 13h8M8 17h5",
+  lixeira: "M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6",
   // apresentação 360°
   orbita: "M21 12c0 2.5-4 4.5-9 4.5S3 14.5 3 12s4-4.5 9-4.5c2.3 0 4.4.4 6 1.1M15.6 6.4l2.6 2.2-2 2.6M12 12h.01",
   anterior: "M15 18l-6-6 6-6",

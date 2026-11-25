@@ -29,6 +29,8 @@ import { criarPainelReplay } from "./ui/painelReplay.js";
 import { criarGravacaoUI } from "./ui/gravacaoUI.js";
 import { criarLayoutPaineis } from "./ui/layoutPaineis.js";
 import { criarTour360 } from "./ui/tour360.js";
+import { criarHistorico } from "./dados/historico.js";
+import { criarHistoricoUI } from "./ui/historicoUI.js";
 import { concluirCarregamento, erroCarregamento, progressoCarregamento } from "./ui/carregamento.js";
 
 const parametros = new URLSearchParams(location.search);
@@ -54,6 +56,8 @@ async function iniciar() {
 
   // ---------- dados
   const fluxo = criarFluxo(config);
+  // histórico do monitoramento (eventos e estatísticas guardados no navegador); antes de qualquer fonte começar
+  const historico = criarHistorico({ fluxo, config });
 
   // abrir uma grandeza: cartão no HUD, gráfico no painel de RV e o sensor dela na frente da tela
   let sensoresUI = null;
@@ -162,7 +166,11 @@ async function iniciar() {
     simulacao,
     aoMudar: () => modos.atualizarInfo(),
     // a situação aplicada entra na linha do tempo da gravação
-    aoAplicarCenario: (c) => gravador.anotar(c ? `Situação aplicada: ${c.nome}` : "Situação removida"),
+    aoAplicarCenario: (c) => {
+      const texto = c ? `Situação aplicada: ${c.nome}` : "Situação removida";
+      gravador.anotar(texto);
+      historico.anotar(texto, "situacao");
+    },
   });
   modos.registrar({
     id: "simulacao",
@@ -177,6 +185,8 @@ async function iniciar() {
       return `Simulação · ${etapa} · ${situacao}`;
     },
   });
+
+  gravador.on("estado", (gravando) => historico.anotar(gravando ? "Gravação de sessão iniciada" : "Gravação de sessão encerrada", "gravacao"));
 
   const replay = criarFonteReplay();
   const painelReplay = criarPainelReplay({ replay, sensoresUI, painelXR });
@@ -201,12 +211,31 @@ async function iniciar() {
     .querySelector(".corpo-modo")
     .appendChild(criarGravacaoUI({ gravador, origem: () => "simulacao", aoAbrirReplay: abrirNoReplay }).el);
 
-  await modos.ativar(parametros.get("modo") ?? "simulacao");
+  // relatório e histórico do monitoramento: aba "Histórico" ao lado de Ao vivo, Simulação e Replay.
+  // Não troca a fonte: o modo em uso continua rodando por trás e o histórico segue registrando.
+  const historicoUI = criarHistoricoUI({ historico, config, aoFechar: () => modos.fecharAba() });
+  modos.registrarAba({
+    id: "historico",
+    nome: "Histórico",
+    dica: "Relatório e histórico do monitoramento: alarmes, atenções, tempo em cada estado e eventos (o modo atual continua rodando)",
+    abrir: () => historicoUI.abrir(),
+    fechar: () => historicoUI.fechar(),
+  });
+
+  const modoInicial = parametros.get("modo") ?? "simulacao";
+  await modos.ativar(modoInicial === "historico" ? "simulacao" : modoInicial);
   if (!modos.atual) await modos.ativar("simulacao"); // ?modo= com um modo que não existe (ex.: o antigo desafio)
 
   // painéis recolhíveis com doca de abas, no desktop e no celular (só interface)
-  const layout = criarLayoutPaineis({ camera, scene });
-  mostrarMedicoes = () => layout.mostrar("medicoes");
+  const layout = criarLayoutPaineis({
+    camera,
+    scene,
+    vistas: [{ el: historicoUI.el, fechar: () => modos.fecharAba() }],
+  });
+  mostrarMedicoes = () => {
+    modos.fecharAba(); // tocar num rótulo 3D / cartão leva de volta ao torno
+    layout.mostrar("medicoes");
+  };
 
   // apresentação 360° (botão no topo; ?tour abre direto). Abrir uma medição pelo cartão sai da apresentação.
   const tour = criarTour360({
@@ -219,6 +248,17 @@ async function iniciar() {
     aoMostrarSensores: () => compartimentos.abrir(),
   });
   xr.on("estado", (emXR) => emXR && tour.fechar());
+  xr.on("estado", (emXR) => emXR && modos.fecharAba());
+  // a aba Histórico cobre a área do torno: abrir ela encerra o que mexe na vista; Sensores e 360° voltam ao torno
+  modos.on("aba", (id) => {
+    if (!id) return;
+    tour.fechar();
+    vitrine.fechar({ imediato: true });
+    caixa.fechar({ imediato: true });
+  });
+  document.getElementById("btn-tour").addEventListener("click", () => modos.fecharAba());
+  compartimentos.on("estado", (aberto) => aberto && modos.fecharAba());
+  caixa.on("estado", (aberta) => aberta && modos.fecharAba());
   xr.on("estado", () => caixa.fechar({ imediato: true })); // volta ao torno ao entrar ou sair do headset
   compartimentos.on("estado", (aberto) => aberto && tour.pararGiro()); // o giro 360° tiraria a câmera das tampas
   caixa.on("estado", (aberta) => aberta && tour.pararGiro());
@@ -227,6 +267,7 @@ async function iniciar() {
   await scene.whenReadyAsync();
   concluirCarregamento();
   if (parametros.has("tour")) tour.abrir();
+  if (parametros.has("historico") || parametros.get("modo") === "historico") modos.abrirAba("historico");
 
   // parâmetros de teste: ?selecionar=cabecote&grandeza=vibracao&vista=comparar&camera=...&painelxr&caixa&sensores
   if (parametros.has("selecionar")) selecao.selecionar(parametros.get("selecionar"));
@@ -256,6 +297,8 @@ async function iniciar() {
     modos,
     painelSimulacao,
     gravador,
+    historico,
+    historicoUI,
     replay,
     painelReplay,
     layout,
